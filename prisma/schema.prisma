@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  username      String?   @unique
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("STUDENT") // ADMIN or STUDENT
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  attempts      Attempt[]
+}
+
+model Exam {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  papers      Paper[]
+}
+
+model Paper {
+  id                  String     @id @default(cuid())
+  examId              String
+  title               String
+  year                Int
+  shift               String?
+  durationSeconds     Int
+  totalQuestions      Int
+  description         String?
+  isActive            Boolean    @default(true)
+  correctMarks        Float      @default(4.0)
+  incorrectMarks      Float      @default(-1.0)
+  unattemptedMarks    Float      @default(0.0)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  exam                Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questions           Question[]
+  attempts            Attempt[]
+}
+
+model Question {
+  id              String         @id @default(cuid())
+  paperId         String
+  questionNumber  Int
+  questionText    String
+  section         String?
+  topic           String?
+  difficulty      String?        // Easy, Medium, Hard
+  options         String         // Stored as JSON string e.g. {"A":"...","B":"..."}
+  correctAnswer   String
+  explanation     String?
+  
+  paper           Paper          @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  attemptAnswers  AttemptAnswer[]
+}
+
+model Attempt {
+  id            String    @id @default(cuid())
+  userId        String
+  paperId       String
+  mode          String    // PRACTICE or MOCK
+  status        String    // IN_PROGRESS, SUBMITTED, AUTO_SUBMITTED
+  startedAt     DateTime  @default(now())
+  endsAt        DateTime?
+  submittedAt   DateTime?
+  score         Float?
+  correct       Int?
+  incorrect     Int?
+  unattempted   Int?
+  accuracy      Float?
+  timeTaken     Int?      // In seconds
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paper         Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  answers       AttemptAnswer[]
+}
+
+model AttemptAnswer {
+  id               String    @id @default(cuid())
+  attemptId        String
+  questionId       String
+  selectedAnswer   String?
+  isCorrect        Boolean?
+  answeredAt       DateTime  @default(now())
+
+  attempt          Attempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question         Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  @@unique([attemptId, questionId])
+}
