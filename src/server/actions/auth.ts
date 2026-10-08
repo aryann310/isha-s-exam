@@ -2,9 +2,7 @@
 
 import { compare } from "bcryptjs";
 import { createSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function loginAction(formData: FormData) {
   const identifier = ((formData.get("username") || formData.get("email") || "") as string).trim();

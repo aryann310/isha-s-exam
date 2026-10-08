@@ -1,10 +1,8 @@
 import { getSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { SolutionClient } from "@/components/exam/solution-client";
-
-const prisma = new PrismaClient();
 
 export default async function SolutionsPage({
   params,

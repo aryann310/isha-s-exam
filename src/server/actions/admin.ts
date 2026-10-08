@@ -1,12 +1,10 @@
 "use server";
 
 import { getSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { parseMarkdownQuestions } from "@/lib/parse-markdown-questions";
-
-const prisma = new PrismaClient();
 
 async function requireAdmin() {
   const session = await getSession();

@@ -1,9 +1,7 @@
 "use server";
 
 import { getSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function saveAnswerAction(attemptId: string, questionId: string, selectedAnswer: string) {
   const session = await getSession();

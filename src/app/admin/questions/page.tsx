@@ -1,11 +1,9 @@
 import { getSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createQuestionAction, updateQuestionAction, deleteQuestionAction } from "@/server/actions/admin";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
-
-const prisma = new PrismaClient();
 
 export default async function AdminQuestionsPage({
   searchParams,

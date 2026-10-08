@@ -44,3 +44,5 @@ next-env.d.ts
 *.db-journal
 *.db-wal
 *.db-shm
+.open-next/
+.wrangler/

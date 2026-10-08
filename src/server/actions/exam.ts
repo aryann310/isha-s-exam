@@ -1,10 +1,8 @@
 "use server";
 
 import { getSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-
-const prisma = new PrismaClient();
 
 export async function startExamAction(formData: FormData) {
   const session = await getSession();

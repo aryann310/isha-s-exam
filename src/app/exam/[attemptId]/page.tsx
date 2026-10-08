@@ -1,9 +1,7 @@
 import { getSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { ExamEngine } from "@/components/exam/exam-engine";
-
-const prisma = new PrismaClient();
 
 export default async function ExamPage({
   params,

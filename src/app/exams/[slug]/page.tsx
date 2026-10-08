@@ -1,9 +1,7 @@
 import { getSession, deleteSession } from "@/lib/auth/session";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-
-const prisma = new PrismaClient();
 
 export default async function ExamPapersPage({
   params,
