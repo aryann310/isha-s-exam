@@ -21,12 +21,7 @@ export function LoginForm() {
       setError(result.error);
       setLoading(false);
     } else if (result?.success) {
-      if (result.role === "ADMIN") {
-        router.push("/admin");
-      } else {
-        router.push("/exams");
-      }
-      router.refresh();
+      window.location.href = result.role === "ADMIN" ? "/admin" : "/exams";
     }
   }
 

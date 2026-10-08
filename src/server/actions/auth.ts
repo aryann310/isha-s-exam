@@ -39,8 +39,8 @@ export async function loginAction(formData: FormData) {
     await createSession(user.id, user.role, user.username || user.name, user.name);
 
     return { success: true, role: user.role };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login error:", error);
-    return { error: "An unexpected error occurred during login" };
+    return { error: error?.message ? `Login failed: ${error.message}` : "An unexpected error occurred during login" };
   }
 }
