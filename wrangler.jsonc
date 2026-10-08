@@ -7,5 +7,11 @@
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
-	}
+	},
+	"routes": [
+		{
+			"pattern": "aiechocore.qzz.io",
+			"custom_domain": true
+		}
+	]
 }
