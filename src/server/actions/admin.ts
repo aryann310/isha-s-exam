@@ -6,6 +6,14 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { parseMarkdownQuestions } from "@/lib/parse-markdown-questions";
 
+function safeRevalidate(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (err) {
+    console.warn(`revalidatePath(${path}) ignored:`, err);
+  }
+}
+
 async function requireAdmin() {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
@@ -44,8 +52,8 @@ export async function createPaperAction(formData: FormData) {
     },
   });
 
-  revalidatePath("/admin");
-  revalidatePath("/exams");
+  safeRevalidate("/admin");
+  safeRevalidate("/exams");
 }
 
 export async function togglePaperStatusAction(paperId: string, isActive: boolean) {
@@ -54,8 +62,8 @@ export async function togglePaperStatusAction(paperId: string, isActive: boolean
     where: { id: paperId },
     data: { isActive },
   });
-  revalidatePath("/admin");
-  revalidatePath("/exams");
+  safeRevalidate("/admin");
+  safeRevalidate("/exams");
   return { success: true };
 }
 
@@ -72,8 +80,8 @@ export async function deletePaperAction(paperId: string) {
     await tx.question.deleteMany({ where: { paperId } });
     await tx.paper.delete({ where: { id: paperId } });
   });
-  revalidatePath("/admin");
-  revalidatePath("/exams");
+  safeRevalidate("/admin");
+  safeRevalidate("/exams");
 }
 
 // Questions
@@ -122,7 +130,7 @@ export async function createQuestionAction(formData: FormData) {
     data: { totalQuestions: count },
   });
 
-  revalidatePath("/admin");
+  safeRevalidate("/admin");
 }
 
 export async function updateQuestionAction(formData: FormData) {
@@ -163,7 +171,7 @@ export async function updateQuestionAction(formData: FormData) {
     },
   });
 
-  revalidatePath("/admin");
+  safeRevalidate("/admin");
 }
 
 export async function deleteQuestionAction(questionId: string) {
@@ -186,7 +194,7 @@ export async function deleteQuestionAction(questionId: string) {
     });
   });
 
-  revalidatePath("/admin");
+  safeRevalidate("/admin");
 }
 
 // Bulk Question Import (JSON and CSV formats supported)
@@ -337,7 +345,7 @@ export async function bulkImportQuestionsAction(
     data: { totalQuestions: count },
   });
 
-  revalidatePath("/admin");
+  safeRevalidate("/admin");
   return { success: true, count: importedCount };
 }
 
@@ -364,7 +372,7 @@ export async function createStudentAction(formData: FormData) {
     },
   });
 
-  revalidatePath("/admin");
+  safeRevalidate("/admin");
 }
 
 export async function deleteStudentAction(userId: string) {
@@ -378,5 +386,5 @@ export async function deleteStudentAction(userId: string) {
     }
     await tx.user.delete({ where: { id: userId } });
   });
-  revalidatePath("/admin");
+  safeRevalidate("/admin");
 }
