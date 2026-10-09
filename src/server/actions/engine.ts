@@ -7,7 +7,7 @@ export async function saveAnswerAction(attemptId: string, questionId: string, se
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
-  const attempt = await prisma.attempt.findUnique({
+  const attempt = await prisma.attempt.findFirst({
     where: { id: attemptId, userId: session.userId as string },
     include: { paper: true },
   });
@@ -49,7 +49,7 @@ export async function submitExamAction(attemptId: string) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
-  const attempt = await prisma.attempt.findUnique({
+  const attempt = await prisma.attempt.findFirst({
     where: { id: attemptId, userId: session.userId as string },
     include: { 
       paper: true,

@@ -14,7 +14,7 @@ export default async function SolutionsPage({
 
   const resolvedParams = await params;
 
-  const attempt = await prisma.attempt.findUnique({
+  const attempt = await prisma.attempt.findFirst({
     where: { id: resolvedParams.attemptId, userId: session.userId as string },
     include: {
       paper: {
