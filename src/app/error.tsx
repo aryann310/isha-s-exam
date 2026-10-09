@@ -21,9 +21,13 @@ export default function GlobalError({
           ⚠
         </div>
         <h1 className="text-2xl font-black text-gray-950 mb-2">Something went wrong</h1>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-gray-500 mb-2">
           An unexpected error occurred while rendering this page.
         </p>
+        <div className="bg-red-50 text-red-600 text-xs p-3 rounded mb-6 text-left overflow-auto font-mono">
+          {error.message || "Unknown error"}
+          {error.digest && <div className="mt-1 text-red-400">Digest: {error.digest}</div>}
+        </div>
         <div className="flex gap-3 justify-center">
           <button
             onClick={() => reset()}

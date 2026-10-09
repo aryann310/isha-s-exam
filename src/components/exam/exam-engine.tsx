@@ -22,6 +22,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
   // Track tentatively selected answers
   const [answers, setAnswers] = useState<Record<string, string>>(() => {
     const acc: Record<string, string> = {};
+    if (!questions || questions.length === 0) return acc;
     initialAnswers.forEach((ans) => {
       if (ans.selectedAnswer) acc[ans.questionId] = ans.selectedAnswer;
     });
@@ -64,11 +65,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [timeLeft, setTimeLeft] = useState<number | null>(() => {
-    if (!attempt.endsAt) return null;
-    const remaining = Math.floor((new Date(attempt.endsAt).getTime() - Date.now()) / 1000);
-    return remaining > 0 ? remaining : 0;
-  });
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   const navigateTo = (idx: number) => {
     setCurrentIndex(idx);
@@ -89,15 +86,17 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
   useEffect(() => {
     if (!attempt.endsAt) return;
 
-    const timer = setInterval(() => {
+    const updateTimer = () => {
       const remaining = Math.max(0, Math.floor((new Date(attempt.endsAt!).getTime() - Date.now()) / 1000));
       setTimeLeft(remaining);
-
       if (remaining <= 0) {
         clearInterval(timer);
         handleAutoSubmit();
       }
-    }, 1000);
+    };
+
+    updateTimer(); // Initial update on client to prevent hydration mismatch
+    const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
   }, [attempt.endsAt, handleAutoSubmit]);
@@ -108,6 +107,21 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
     await submitExamAction(attempt.id);
     router.push(`/results/${attempt.id}`);
   };
+
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">No Questions Found</h2>
+        <p className="text-gray-500 mb-6">This paper currently has no questions assigned to it.</p>
+        <button
+          onClick={() => router.push("/exams")}
+          className="bg-gray-900 text-white px-6 py-2 rounded-lg font-medium"
+        >
+          Return Home
+        </button>
+      </div>
+    );
+  }
 
   const currentQuestion = questions[currentIndex];
   const isConfirmed = !!results[currentQuestion?.id];
