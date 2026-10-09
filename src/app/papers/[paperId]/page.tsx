@@ -14,8 +14,17 @@ export default async function PaperInfoPage({
 
   const resolvedParams = await params;
 
-  const paper = await prisma.paper.findUnique({
-    where: { id: resolvedParams.paperId, isActive: true },
+  const param = decodeURIComponent(resolvedParams.paperId).trim();
+
+  const paper = await prisma.paper.findFirst({
+    where: {
+      OR: [
+        { id: param },
+        { title: { equals: param, mode: "insensitive" } },
+        { title: { equals: param.replace(/-/g, " "), mode: "insensitive" } },
+      ],
+      isActive: true,
+    },
     include: {
       exam: true,
       questions: {

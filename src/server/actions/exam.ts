@@ -29,8 +29,14 @@ export async function startExamAction(formData: FormData) {
     redirect(`/exam/${existingAttempt.id}`);
   }
 
-  const paper = await prisma.paper.findUnique({
-    where: { id: paperId },
+  const paper = await prisma.paper.findFirst({
+    where: {
+      OR: [
+        { id: paperId },
+        { title: { equals: paperId, mode: "insensitive" } },
+        { title: { equals: paperId.replace(/-/g, " "), mode: "insensitive" } },
+      ],
+    },
   });
 
   if (!paper) {
@@ -40,7 +46,7 @@ export async function startExamAction(formData: FormData) {
   const attempt = await prisma.attempt.create({
     data: {
       userId: session.userId as string,
-      paperId,
+      paperId: paper.id,
       mode,
       status: "IN_PROGRESS",
       endsAt: mode === "MOCK" ? new Date(Date.now() + paper.durationSeconds * 1000) : null,
