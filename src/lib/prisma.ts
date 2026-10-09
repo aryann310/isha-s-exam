@@ -1,9 +1,13 @@
-import { Pool } from "@neondatabase/serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
 const DEFAULT_DB_URL =
   "postgresql://neondb_owner:npg_RhHys3W8uGme@ep-plain-firefly-b3flr0pk-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+
+if (typeof WebSocket !== "undefined") {
+  neonConfig.webSocketConstructor = WebSocket;
+}
 
 let prismaInstance: PrismaClient | null = null;
 

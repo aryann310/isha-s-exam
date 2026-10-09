@@ -40,6 +40,9 @@ export default async function ResultPage({
     { total: number; correct: number; incorrect: number; unattempted: number }
   > = {};
 
+  // ponytail: O(N) map instead of O(N^2) find
+  const ansByQ = Object.fromEntries(attempt.answers.map(a => [a.questionId, a]));
+
   attempt.paper.questions.forEach((q) => {
     const sec = q.section || "General";
     if (!sectionStats[sec]) {
@@ -47,7 +50,7 @@ export default async function ResultPage({
     }
     sectionStats[sec].total++;
 
-    const ans = attempt.answers.find((a) => a.questionId === q.id);
+    const ans = ansByQ[q.id];
     if (!ans || !ans.selectedAnswer) {
       sectionStats[sec].unattempted++;
     } else if (ans.isCorrect) {

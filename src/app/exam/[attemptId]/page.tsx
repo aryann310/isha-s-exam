@@ -33,7 +33,15 @@ export default async function ExamPage({
     orderBy: { questionNumber: "asc" },
   });
 
-  const questions = rawQuestions;
+  // ponytail: Don't leak correct answers to the client for unattempted questions
+  const questions = rawQuestions.map(q => {
+    const answered = attempt.answers.find(a => a.questionId === q.id && a.selectedAnswer);
+    return {
+      ...q,
+      correctAnswer: answered ? q.correctAnswer : "",
+      explanation: answered ? q.explanation : ""
+    };
+  });
 
   return (
     <ExamEngine 

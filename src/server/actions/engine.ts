@@ -52,7 +52,7 @@ export async function submitExamAction(attemptId: string) {
   const attempt = await prisma.attempt.findUnique({
     where: { id: attemptId, userId: session.userId as string },
     include: { 
-      paper: { include: { questions: true } },
+      paper: true,
       answers: true,
     },
   });
@@ -63,26 +63,16 @@ export async function submitExamAction(attemptId: string) {
 
   const { paper, answers } = attempt;
 
+  // ponytail: shrink N+1 DB updates. isCorrect is already saved continuously.
   let correctCount = 0;
   let incorrectCount = 0;
-  let unattemptedCount = paper.questions.length;
+  let unattemptedCount = paper.totalQuestions;
 
-  for (const question of paper.questions) {
-    const ans = answers.find(a => a.questionId === question.id);
-    if (ans && ans.selectedAnswer) {
+  for (const ans of answers) {
+    if (ans.selectedAnswer) {
       unattemptedCount--;
-      const isCorrect = ans.selectedAnswer === question.correctAnswer;
-      if (isCorrect) {
-        correctCount++;
-      } else {
-        incorrectCount++;
-      }
-      
-      // Update answer correctness
-      await prisma.attemptAnswer.update({
-        where: { id: ans.id },
-        data: { isCorrect },
-      });
+      if (ans.isCorrect) correctCount++;
+      else incorrectCount++;
     }
   }
 
