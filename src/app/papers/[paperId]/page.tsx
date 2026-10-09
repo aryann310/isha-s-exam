@@ -15,13 +15,13 @@ export default async function PaperInfoPage({
   const resolvedParams = await params;
 
   const param = decodeURIComponent(resolvedParams.paperId).trim();
+  const words = param.toLowerCase().split(/[\s-]+/).filter(Boolean);
 
-  const paper = await prisma.paper.findFirst({
+  let paper = await prisma.paper.findFirst({
     where: {
       OR: [
         { id: param },
-        { title: { equals: param, mode: "insensitive" } },
-        { title: { equals: param.replace(/-/g, " "), mode: "insensitive" } },
+        { title: { contains: param, mode: "insensitive" } },
       ],
       isActive: true,
     },
@@ -32,6 +32,22 @@ export default async function PaperInfoPage({
       },
     },
   });
+
+  // Smart fallback: match by word tokens (e.g. "snap", "2024", "pyq")
+  if (!paper && words.length > 0) {
+    const allPapers = await prisma.paper.findMany({
+      where: { isActive: true },
+      include: {
+        exam: true,
+        questions: { select: { section: true } },
+      },
+    });
+    paper =
+      allPapers.find((p) => {
+        const fullText = `${p.title} ${p.exam.name} ${p.exam.slug}`.toLowerCase();
+        return words.every((w) => fullText.includes(w));
+      }) || null;
+  }
 
   if (!paper) return notFound();
 

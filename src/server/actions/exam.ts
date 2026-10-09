@@ -29,15 +29,28 @@ export async function startExamAction(formData: FormData) {
     redirect(`/exam/${existingAttempt.id}`);
   }
 
-  const paper = await prisma.paper.findFirst({
+  const param = decodeURIComponent(paperId).trim();
+  const words = param.toLowerCase().split(/[\s-]+/).filter(Boolean);
+
+  let paper = await prisma.paper.findFirst({
     where: {
       OR: [
-        { id: paperId },
-        { title: { equals: paperId, mode: "insensitive" } },
-        { title: { equals: paperId.replace(/-/g, " "), mode: "insensitive" } },
+        { id: param },
+        { title: { contains: param, mode: "insensitive" } },
       ],
     },
   });
+
+  if (!paper && words.length > 0) {
+    const allPapers = await prisma.paper.findMany({
+      include: { exam: true },
+    });
+    paper =
+      allPapers.find((p) => {
+        const fullText = `${p.title} ${p.exam.name} ${p.exam.slug}`.toLowerCase();
+        return words.every((w) => fullText.includes(w));
+      }) || null;
+  }
 
   if (!paper) {
     throw new Error("Paper not found");
