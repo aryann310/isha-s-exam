@@ -64,7 +64,6 @@ export function parseMarkdownQuestions(markdown: string): ParsedMarkdownQuestion
       // If no explicit **Question:** header, strip metadata lines and stop at Options
       const lines = block.split("\n");
       const contentLines: string[] = [];
-      let pastMetadata = false;
 
       for (const line of lines) {
         if (/^###\s*/i.test(line) || /^\s*-\s*\*\*(?:Section|Topic|Difficulty)/i.test(line)) {
