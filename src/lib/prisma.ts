@@ -3,7 +3,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
 const DEFAULT_DB_URL =
-  "postgresql://neondb_owner:npg_RhHys3W8uGme@ep-plain-firefly-b3flr0pk-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+  "postgresql://neondb_owner:npg_qW9FYhIs0eVA@ep-wandering-sun-b373kck7-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 
 if (typeof WebSocket !== "undefined") {
   neonConfig.webSocketConstructor = WebSocket;
