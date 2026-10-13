@@ -4,13 +4,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default async function ExamsPage() {
-  const session: any = await getSession() || { userId: "cmv0hy0sy0001wt0ojsyflsxo", role: "USER", username: "testuser" };
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   const [exams, myAttempts] = await Promise.all([
     prisma.exam.findMany({
       where: { isActive: true },
     }),
     prisma.attempt.findMany({
+      where: { userId: session.userId as string },
       orderBy: { startedAt: "desc" },
       take: 6,
       include: {
