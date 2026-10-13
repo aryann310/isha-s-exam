@@ -56,6 +56,49 @@ export async function createPaperAction(formData: FormData) {
   safeRevalidate("/exams");
 }
 
+export async function updatePaperAction(formData: FormData) {
+  await requireAdmin();
+
+  const paperId = formData.get("paperId") as string;
+  if (!paperId) {
+    throw new Error("Paper ID is required");
+  }
+
+  const examId = (formData.get("examId") as string) || undefined;
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) {
+    throw new Error("Paper title is required");
+  }
+
+  const year = parseInt(formData.get("year") as string, 10) || new Date().getFullYear();
+  const shift = (formData.get("shift") as string)?.trim() || null;
+  const durationMinutes = parseInt(formData.get("durationMinutes") as string, 10) || 60;
+  const correctMarks = parseFloat(formData.get("correctMarks") as string);
+  const incorrectMarks = parseFloat(formData.get("incorrectMarks") as string);
+  const unattemptedMarks = parseFloat(formData.get("unattemptedMarks") as string);
+  const description = (formData.get("description") as string)?.trim() || null;
+
+  await prisma.paper.update({
+    where: { id: paperId },
+    data: {
+      examId,
+      title,
+      year,
+      shift,
+      durationSeconds: durationMinutes * 60,
+      correctMarks: isNaN(correctMarks) ? 4 : correctMarks,
+      incorrectMarks: isNaN(incorrectMarks) ? -1 : incorrectMarks,
+      unattemptedMarks: isNaN(unattemptedMarks) ? 0 : unattemptedMarks,
+      description,
+    },
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/papers");
+  safeRevalidate("/exams");
+  return { success: true };
+}
+
 export async function togglePaperStatusAction(paperId: string, isActive: boolean) {
   await requireAdmin();
   await prisma.paper.update({
