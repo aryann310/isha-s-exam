@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PaperManager } from "@/components/admin/paper-manager";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPapersPage({
   searchParams,
 }: {

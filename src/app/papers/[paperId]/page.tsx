@@ -4,6 +4,8 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { startExamAction } from "@/server/actions/exam";
 
+export const dynamic = "force-dynamic";
+
 export default async function PaperInfoPage({
   params,
 }: {
@@ -13,6 +15,7 @@ export default async function PaperInfoPage({
   if (!session) redirect("/login");
 
   const resolvedParams = await params;
+  const isAdmin = session.role === "ADMIN";
 
   const param = decodeURIComponent(resolvedParams.paperId).trim();
   const words = param.toLowerCase().split(/[\s-]+/).filter(Boolean);
@@ -23,7 +26,7 @@ export default async function PaperInfoPage({
         { id: param },
         { title: { contains: param, mode: "insensitive" } },
       ],
-      isActive: true,
+      ...(isAdmin ? {} : { isActive: true }),
     },
     include: {
       exam: true,
@@ -36,7 +39,7 @@ export default async function PaperInfoPage({
   // Smart fallback: match by word tokens (e.g. "snap", "2024", "pyq")
   if (!paper && words.length > 0) {
     const allPapers = await prisma.paper.findMany({
-      where: { isActive: true },
+      where: isAdmin ? {} : { isActive: true },
       include: {
         exam: true,
         questions: { select: { section: true } },

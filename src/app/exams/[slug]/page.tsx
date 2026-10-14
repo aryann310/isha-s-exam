@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function ExamPapersPage({
   params,
 }: {
@@ -12,12 +14,17 @@ export default async function ExamPapersPage({
   if (!session) redirect("/login");
 
   const resolvedParams = await params;
+  const isAdmin = session.role === "ADMIN";
 
-  const exam = await prisma.exam.findUnique({
-    where: { slug: resolvedParams.slug, isActive: true },
+  // ponytail: findFirst avoids Prisma compound unique constraint error with isActive
+  const exam = await prisma.exam.findFirst({
+    where: {
+      slug: resolvedParams.slug,
+      ...(isAdmin ? {} : { isActive: true }),
+    },
     include: {
       papers: {
-        where: { isActive: true },
+        where: isAdmin ? {} : { isActive: true },
         orderBy: { year: "desc" },
       },
     },
@@ -115,6 +122,11 @@ export default async function ExamPapersPage({
                     {paper.shift && (
                       <span className="text-[10px] font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
                         {paper.shift}
+                      </span>
+                    )}
+                    {!paper.isActive && (
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                        DRAFT (Admin View)
                       </span>
                     )}
                   </div>

@@ -185,7 +185,7 @@ export function PaperManager({
                 <label className="block text-gray-700 mb-1">Target Examination</label>
                 <select
                   name="examId"
-                  value={selectedExamId}
+                  value={exams.some((e) => e.id === selectedExamId) ? selectedExamId : exams[0]?.id || ""}
                   onChange={(e) => setSelectedExamId(e.target.value)}
                   required
                   className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-gray-900 outline-none"

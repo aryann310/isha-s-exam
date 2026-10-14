@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ImportClient } from "@/components/admin/import-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminImportPage() {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") redirect("/login");

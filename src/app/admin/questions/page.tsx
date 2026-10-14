@@ -5,6 +5,8 @@ import Link from "next/link";
 import { createQuestionAction, updateQuestionAction, deleteQuestionAction } from "@/server/actions/admin";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminQuestionsPage({
   searchParams,
 }: {

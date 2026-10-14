@@ -185,15 +185,24 @@ export async function deleteExamAction(examId: string) {
 export async function createPaperAction(formData: FormData) {
   await requireAdmin();
 
-  const examId = formData.get("examId") as string;
-  const title = formData.get("title") as string;
-  const year = parseInt(formData.get("year") as string, 10);
-  const shift = (formData.get("shift") as string) || null;
+  const examId = (formData.get("examId") as string)?.trim();
+  if (!examId) throw new Error("Target examination is required");
+
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) throw new Error("Paper title is required");
+
+  const year = parseInt(formData.get("year") as string, 10) || new Date().getFullYear();
+  const shift = (formData.get("shift") as string)?.trim() || null;
   const durationMinutes = parseInt(formData.get("durationMinutes") as string, 10) || 60;
-  const correctMarks = parseFloat(formData.get("correctMarks") as string) || 4;
-  const incorrectMarks = parseFloat(formData.get("incorrectMarks") as string) || -1;
-  const unattemptedMarks = parseFloat(formData.get("unattemptedMarks") as string) || 0;
-  const description = (formData.get("description") as string) || null;
+
+  const parsedCorrect = parseFloat(formData.get("correctMarks") as string);
+  const parsedIncorrect = parseFloat(formData.get("incorrectMarks") as string);
+  const parsedUnattempted = parseFloat(formData.get("unattemptedMarks") as string);
+
+  const correctMarks = isNaN(parsedCorrect) ? 4 : parsedCorrect;
+  const incorrectMarks = isNaN(parsedIncorrect) ? -1 : parsedIncorrect;
+  const unattemptedMarks = isNaN(parsedUnattempted) ? 0 : parsedUnattempted;
+  const description = (formData.get("description") as string)?.trim() || null;
   const isActive = formData.get("isActive") === "false" ? false : true;
 
   await prisma.paper.create({

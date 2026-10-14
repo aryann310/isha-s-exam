@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createStudentAction, deleteStudentAction } from "@/server/actions/admin";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminUsersPage() {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") redirect("/login");

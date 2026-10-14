@@ -91,10 +91,10 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
 
                       if (isCorrect) {
                         bgClass = "bg-emerald-50 border-emerald-500 text-emerald-950 opacity-100 font-medium";
-                        indicator = " (Correct Answer)";
+                        indicator = isSelected ? " (Your Answer - Correct ✓)" : " (Correct Answer)";
                       } else if (isSelected) {
                         bgClass = "bg-rose-50 border-rose-500 text-rose-950 opacity-100 font-medium";
-                        indicator = " (Your Answer)";
+                        indicator = " (Your Answer - Incorrect ✗)";
                       }
 
                       return (

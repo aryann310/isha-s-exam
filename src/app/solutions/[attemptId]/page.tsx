@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { SolutionClient } from "@/components/exam/solution-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function SolutionsPage({
   params,
 }: {
