@@ -10,6 +10,13 @@ export default async function ExamsPage() {
   const [exams, myAttempts] = await Promise.all([
     prisma.exam.findMany({
       where: { isActive: true },
+      include: {
+        papers: {
+          where: { isActive: true },
+          select: { id: true },
+        },
+      },
+      orderBy: { name: "asc" },
     }),
     prisma.attempt.findMany({
       where: { userId: session.userId as string },
@@ -53,36 +60,52 @@ export default async function ExamsPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl w-full mx-auto p-6 md:p-12">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-12">
         <div className="text-center mb-10">
           <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
             Private Examination System
           </p>
           <h2 className="text-3xl font-black text-gray-950">Select your examination</h2>
+          <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+            Choose an exam to access official previous year question papers and full-length timed mock tests.
+          </p>
         </div>
 
         {exams.length === 0 ? (
           <div className="text-center text-gray-500 mt-12 bg-white p-8 rounded-2xl border border-gray-200">
-            No examinations available right now.
+            <p className="font-bold text-gray-800">No examinations available right now.</p>
+            {session.role === "ADMIN" && (
+              <Link
+                href="/admin/exams"
+                className="mt-3 inline-block text-xs font-bold text-blue-600 hover:underline"
+              >
+                + Create your first Exam in Admin &rarr;
+              </Link>
+            )}
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-16">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16">
             {exams.map((exam) => (
               <Link
                 key={exam.id}
                 href={`/exams/${exam.slug}`}
-                className="group block bg-white border border-gray-200 rounded-2xl p-10 text-center hover:border-gray-950 hover:shadow-lg transition-all"
+                className="group block bg-white border border-gray-200 rounded-2xl p-8 text-center hover:border-gray-950 hover:shadow-lg transition-all"
               >
-                <div className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 font-black text-xl group-hover:scale-110 transition-transform">
-                  {exam.name.slice(0, 1)}
+                <div className="w-14 h-14 bg-gray-950 text-white rounded-2xl flex items-center justify-center mx-auto mb-5 font-black text-xl group-hover:scale-110 transition-transform shadow-xs">
+                  {exam.name.slice(0, 2).toUpperCase()}
                 </div>
                 <h3 className="text-2xl font-black text-gray-950 tracking-tight">
                   {exam.name}
                 </h3>
-                <p className="text-gray-500 mt-2 text-sm font-medium">
-                  Previous Year Question Papers
+                <p className="text-gray-500 mt-2 text-xs font-medium line-clamp-2 min-h-8">
+                  {exam.description || "Previous Year Question Papers & Mock Tests"}
                 </p>
-                <div className="mt-6 inline-flex items-center text-xs font-bold text-gray-900 group-hover:translate-x-1 transition-transform">
+                <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-[11px] font-bold text-gray-700">
+                  <span>
+                    {exam.papers.length} {exam.papers.length === 1 ? "Paper" : "Papers"} Available
+                  </span>
+                </div>
+                <div className="mt-5 flex items-center justify-center text-xs font-bold text-gray-900 group-hover:translate-x-1 transition-transform">
                   View Papers &rarr;
                 </div>
               </Link>

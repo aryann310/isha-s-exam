@@ -37,6 +37,9 @@ export default async function AdminDashboard() {
             <Link href="/admin" className="text-white font-bold border-b-2 border-white pb-1">
               Overview
             </Link>
+            <Link href="/admin/exams" className="hover:text-white transition-colors">
+              Exams
+            </Link>
             <Link href="/admin/papers" className="hover:text-white transition-colors">
               Papers
             </Link>
@@ -90,8 +93,14 @@ export default async function AdminDashboard() {
           </div>
           <div className="flex flex-wrap gap-2.5">
             <Link
+              href="/admin/exams"
+              className="bg-gray-950 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
+            >
+              + Create Exam
+            </Link>
+            <Link
               href="/admin/papers"
-              className="bg-gray-900 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
+              className="bg-white border border-gray-300 text-gray-900 text-xs font-bold px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-xs"
             >
               + Create Paper
             </Link>
@@ -115,7 +124,9 @@ export default async function AdminDashboard() {
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Exams</p>
             <p className="text-3xl font-black text-gray-900">{examsCount}</p>
-            <p className="text-[11px] text-gray-400 mt-2">CMAT, SNAP</p>
+            <Link href="/admin/exams" className="text-[11px] text-blue-600 hover:underline mt-2 inline-block">
+              Manage exams &rarr;
+            </Link>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
@@ -152,12 +163,27 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Quick Access Action Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-10">
+        <div className="grid md:grid-cols-4 gap-6 mb-10">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900 text-base mb-1">Exam Management</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Create new exams (CMAT, SNAP, CAT, XAT, NMAT, etc.) and configure categories for papers.
+              </p>
+            </div>
+            <Link
+              href="/admin/exams"
+              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-center transition-colors"
+            >
+              Open Exams &rarr;
+            </Link>
+          </div>
+
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
             <div>
               <h3 className="font-bold text-gray-900 text-base mb-1">Paper Management</h3>
               <p className="text-xs text-gray-500 mb-4">
-                Create new CMAT / SNAP question papers, set duration, marking rules (+4 / -1), and toggle visibility.
+                Create new question papers, set duration, marking rules, and toggle published status.
               </p>
             </div>
             <Link

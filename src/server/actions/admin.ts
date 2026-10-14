@@ -22,6 +22,165 @@ async function requireAdmin() {
   return session;
 }
 
+// Exams Management
+export async function createExamAction(formData: FormData) {
+  await requireAdmin();
+
+  const name = (formData.get("name") as string)?.trim();
+  if (!name) {
+    throw new Error("Exam name is required");
+  }
+
+  let slug = (formData.get("slug") as string)?.trim().toLowerCase();
+  if (!slug) {
+    slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  } else {
+    slug = slug.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  if (!slug) {
+    throw new Error("Invalid exam slug");
+  }
+
+  const description = (formData.get("description") as string)?.trim() || null;
+  const isActive = formData.get("isActive") === "false" ? false : true;
+
+  const existing = await prisma.exam.findUnique({
+    where: { slug },
+  });
+  if (existing) {
+    throw new Error(`An exam with identifier "${slug}" already exists.`);
+  }
+
+  const exam = await prisma.exam.create({
+    data: {
+      name,
+      slug,
+      description,
+      isActive,
+    },
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/exams");
+  safeRevalidate("/admin/papers");
+  safeRevalidate("/exams");
+  return { success: true, exam };
+}
+
+export async function updateExamAction(formData: FormData) {
+  await requireAdmin();
+
+  const examId = formData.get("examId") as string;
+  if (!examId) {
+    throw new Error("Exam ID is required");
+  }
+
+  const name = (formData.get("name") as string)?.trim();
+  if (!name) {
+    throw new Error("Exam name is required");
+  }
+
+  let slug = (formData.get("slug") as string)?.trim().toLowerCase();
+  if (!slug) {
+    slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  } else {
+    slug = slug.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  const description = (formData.get("description") as string)?.trim() || null;
+  const isActive = formData.get("isActive") !== null ? formData.get("isActive") === "true" : undefined;
+
+  const existing = await prisma.exam.findFirst({
+    where: {
+      slug,
+      id: { not: examId },
+    },
+  });
+  if (existing) {
+    throw new Error(`An exam with slug "${slug}" already exists.`);
+  }
+
+  const updated = await prisma.exam.update({
+    where: { id: examId },
+    data: {
+      name,
+      slug,
+      description,
+      ...(isActive !== undefined ? { isActive } : {}),
+    },
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/exams");
+  safeRevalidate("/admin/papers");
+  safeRevalidate("/exams");
+  safeRevalidate(`/exams/${slug}`);
+  return { success: true, exam: updated };
+}
+
+export async function toggleExamStatusAction(examId: string, isActive: boolean) {
+  await requireAdmin();
+
+  const exam = await prisma.exam.update({
+    where: { id: examId },
+    data: { isActive },
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/exams");
+  safeRevalidate("/admin/papers");
+  safeRevalidate("/exams");
+  safeRevalidate(`/exams/${exam.slug}`);
+  return { success: true };
+}
+
+export async function deleteExamAction(examId: string) {
+  await requireAdmin();
+
+  await prisma.$transaction(async (tx) => {
+    const papers = await tx.paper.findMany({
+      where: { examId },
+      select: { id: true },
+    });
+    const paperIds = papers.map((p) => p.id);
+
+    if (paperIds.length > 0) {
+      const attempts = await tx.attempt.findMany({
+        where: { paperId: { in: paperIds } },
+        select: { id: true },
+      });
+      const attemptIds = attempts.map((a) => a.id);
+
+      if (attemptIds.length > 0) {
+        await tx.attemptAnswer.deleteMany({
+          where: { attemptId: { in: attemptIds } },
+        });
+        await tx.attempt.deleteMany({
+          where: { id: { in: attemptIds } },
+        });
+      }
+
+      await tx.question.deleteMany({
+        where: { paperId: { in: paperIds } },
+      });
+      await tx.paper.deleteMany({
+        where: { examId },
+      });
+    }
+
+    await tx.exam.delete({
+      where: { id: examId },
+    });
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/exams");
+  safeRevalidate("/admin/papers");
+  safeRevalidate("/exams");
+  return { success: true };
+}
+
 // Papers
 export async function createPaperAction(formData: FormData) {
   await requireAdmin();
@@ -35,6 +194,7 @@ export async function createPaperAction(formData: FormData) {
   const incorrectMarks = parseFloat(formData.get("incorrectMarks") as string) || -1;
   const unattemptedMarks = parseFloat(formData.get("unattemptedMarks") as string) || 0;
   const description = (formData.get("description") as string) || null;
+  const isActive = formData.get("isActive") === "false" ? false : true;
 
   await prisma.paper.create({
     data: {
@@ -48,11 +208,13 @@ export async function createPaperAction(formData: FormData) {
       incorrectMarks,
       unattemptedMarks,
       description,
-      isActive: true,
+      isActive,
     },
   });
 
   safeRevalidate("/admin");
+  safeRevalidate("/admin/exams");
+  safeRevalidate("/admin/papers");
   safeRevalidate("/exams");
 }
 

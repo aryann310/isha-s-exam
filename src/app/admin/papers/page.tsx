@@ -4,12 +4,18 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PaperManager } from "@/components/admin/paper-manager";
 
-export default async function AdminPapersPage() {
+export default async function AdminPapersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ examId?: string }>;
+}) {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") redirect("/login");
 
+  const resolvedSearchParams = await searchParams;
+
   const [exams, papers] = await Promise.all([
-    prisma.exam.findMany({ where: { isActive: true } }),
+    prisma.exam.findMany({ orderBy: { name: "asc" } }),
     prisma.paper.findMany({
       include: {
         exam: true,
@@ -31,6 +37,9 @@ export default async function AdminPapersPage() {
           <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-gray-300">
             <Link href="/admin" className="hover:text-white transition-colors">
               Overview
+            </Link>
+            <Link href="/admin/exams" className="hover:text-white transition-colors">
+              Exams
             </Link>
             <Link href="/admin/papers" className="text-white font-bold border-b-2 border-white pb-1">
               Papers
@@ -59,12 +68,16 @@ export default async function AdminPapersPage() {
           <div>
             <h2 className="text-2xl font-black text-gray-900 tracking-tight">Paper Management</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Create and configure PYQ mock exam papers for CMAT and SNAP.
+              Create, configure, and publish question papers across all examinations.
             </p>
           </div>
         </div>
 
-        <PaperManager exams={exams} papers={papers} />
+        <PaperManager
+          exams={exams}
+          papers={papers}
+          initialExamId={resolvedSearchParams?.examId}
+        />
       </main>
     </div>
   );

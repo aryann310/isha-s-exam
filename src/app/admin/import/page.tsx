@@ -25,6 +25,9 @@ export default async function AdminImportPage() {
             <Link href="/admin" className="hover:text-white transition-colors">
               Overview
             </Link>
+            <Link href="/admin/exams" className="hover:text-white transition-colors">
+              Exams
+            </Link>
             <Link href="/admin/papers" className="hover:text-white transition-colors">
               Papers
             </Link>
