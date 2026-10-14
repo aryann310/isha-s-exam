@@ -128,3 +128,46 @@
     @apply font-sans;
   }
 }
+
+/* Question Diagram & Markdown Formatting */
+.prose img {
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+  margin: 1.25rem auto;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  display: block;
+  object-fit: contain;
+  background-color: #ffffff;
+  padding: 0.25rem;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid #e5e7eb;
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+}
+
+.prose th {
+  background-color: #f9fafb;
+  font-weight: 700;
+  color: #111827;
+}
+
+.prose tr:nth-child(even) td {
+  background-color: #fdfdfd;
+}

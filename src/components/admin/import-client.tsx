@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { bulkImportQuestionsAction } from "@/server/actions/admin";
 import { useRouter } from "next/navigation";
+import { DiagramUploader } from "@/components/admin/diagram-uploader";
 
 const SAMPLE_MARKDOWN = `### Question 1
 - **Section**: Quantitative, Data Interpretation & Data Sufficiency
@@ -35,24 +36,28 @@ Hence, option **(A)** is correct.
 ---
 
 ### Question 2
-- **Section**: General English
-- **Topic**: Vocabulary
-- **Difficulty**: Easy
+- **Section**: Quantitative Techniques & Data Interpretation
+- **Topic**: Geometry & Diagrams
+- **Difficulty**: Medium
 
 **Question:**
-Choose the word which is closest in meaning to **'Ephemeral'**:
+In the given figure below, $ABCD$ is a cyclic quadrilateral. If $\\angle ABC = 70^\\circ$, find the measure of $\\angle ADC$.
+
+![Cyclic Quadrilateral Diagram](https://placehold.co/600x260/f3f4f6/111827?text=Figure:+Cyclic+Quadrilateral+ABCD)
 
 **Options:**
-- (A) Permanent
-- (B) Transient
-- (C) Celestial
-- (D) Subtle
+- (A) $70^\\circ$
+- (B) $110^\\circ$
+- (C) $120^\\circ$
+- (D) $140^\\circ$
 
 **Correct Answer:** B
 
 **Explanation:**
-**'Ephemeral'** means lasting for a very short time. **Transient** is the closest synonym.
+Opposite angles in a cyclic quadrilateral sum to $180^\\circ$.
+$\\angle ADC = 180^\\circ - 70^\\circ = 110^\\circ$.
 `;
+
 
 const SAMPLE_JSON = JSON.stringify(
   [
@@ -209,6 +214,12 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
           </div>
         </div>
       </div>
+
+      {/* Instant Diagram / Image Uploader for Questions */}
+      <DiagramUploader
+        label="Question Diagram / Image Converter"
+        onInsert={(snippet) => setRawData((prev) => prev + snippet)}
+      />
 
       <div>
         <div className="flex flex-wrap justify-between items-center gap-2 mb-1">

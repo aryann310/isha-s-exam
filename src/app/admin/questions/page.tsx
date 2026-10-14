@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createQuestionAction, updateQuestionAction, deleteQuestionAction } from "@/server/actions/admin";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
+import { DiagramUploader } from "@/components/admin/diagram-uploader";
 
 export const dynamic = "force-dynamic";
 
@@ -202,13 +203,16 @@ export default async function AdminQuestionsPage({
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">Question Text (Supports HTML/Text)</label>
+                <label className="block text-gray-700 mb-1">Question Text (Supports Markdown, Math & Diagrams)</label>
+                <div className="mb-2">
+                  <DiagramUploader compact label="Attach Diagram" />
+                </div>
                 <textarea
                   name="questionText"
-                  rows={3}
+                  rows={4}
                   required
                   defaultValue={editingQuestion?.questionText || ""}
-                  placeholder="Enter question statement..."
+                  placeholder="Enter question statement (paste diagram markdown snippet here if applicable)..."
                   className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
                 />
               </div>
