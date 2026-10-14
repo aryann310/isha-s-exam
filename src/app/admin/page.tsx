@@ -9,12 +9,13 @@ export default async function AdminDashboard() {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") redirect("/login");
 
-  const [usersCount, examsCount, papersCount, questionsCount, attemptsCount] = await Promise.all([
+  const [usersCount, examsCount, papersCount, questionsCount, attemptsCount, liveAttemptsCount] = await Promise.all([
     prisma.user.count({ where: { role: "STUDENT" } }),
     prisma.exam.count(),
     prisma.paper.count(),
     prisma.question.count(),
     prisma.attempt.count(),
+    prisma.attempt.count({ where: { status: "IN_PROGRESS" } }),
   ]);
 
   const recentAttempts = await prisma.attempt.findMany({
@@ -38,6 +39,10 @@ export default async function AdminDashboard() {
           <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-gray-300">
             <Link href="/admin" className="text-white font-bold border-b-2 border-white pb-1">
               Overview
+            </Link>
+            <Link href="/admin/live" className="text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              Live Proctor 🔴
             </Link>
             <Link href="/admin/exams" className="hover:text-white transition-colors">
               Exams
@@ -95,6 +100,13 @@ export default async function AdminDashboard() {
           </div>
           <div className="flex flex-wrap gap-2.5">
             <Link
+              href="/admin/live"
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              Live Proctor Hub {liveAttemptsCount > 0 ? `(${liveAttemptsCount})` : ""}
+            </Link>
+            <Link
               href="/admin/exams"
               className="bg-gray-950 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
             >
@@ -120,6 +132,29 @@ export default async function AdminDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Live Active Alert Banner */}
+        {liveAttemptsCount > 0 && (
+          <div className="mb-8 bg-rose-50 border-2 border-rose-300 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="w-3.5 h-3.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+              <div>
+                <p className="text-sm font-black text-rose-950">
+                  🔴 LIVE NOW: {liveAttemptsCount} student session{liveAttemptsCount > 1 ? "s" : ""} currently in progress
+                </p>
+                <p className="text-xs text-rose-700">
+                  Monitor live answers in real time, view question selections, adjust timer, or force submit.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/admin/live"
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors shrink-0 shadow-xs"
+            >
+              Open Live Proctor Hub &rarr;
+            </Link>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
@@ -165,62 +200,86 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Quick Access Action Cards */}
-        <div className="grid md:grid-cols-4 gap-6 mb-10">
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-10">
+          <div className="bg-gray-950 text-white p-5 rounded-xl border border-gray-800 shadow-sm flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-gray-900 text-base mb-1">Exam Management</h3>
+              <div className="flex items-center justify-between mb-1.5">
+                <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
+                  Live Proctor Hub 🔴
+                </h3>
+                {liveAttemptsCount > 0 && (
+                  <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                    {liveAttemptsCount} Live
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mb-4">
+                Watch student screens live, inspect answers, launch exams remotely, and force close.
+              </p>
+            </div>
+            <Link
+              href="/admin/live"
+              className="text-xs font-bold text-gray-950 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg text-center transition-colors shadow-xs"
+            >
+              Open Proctor Hub &rarr;
+            </Link>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm mb-1">Exam Management</h3>
               <p className="text-xs text-gray-500 mb-4">
-                Create new exams (CMAT, SNAP, CAT, XAT, NMAT, etc.) and configure categories for papers.
+                Create new exams (CMAT, SNAP, CAT, XAT, NMAT) and configure categories for papers.
               </p>
             </div>
             <Link
               href="/admin/exams"
-              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-center transition-colors"
+              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-center transition-colors"
             >
               Open Exams &rarr;
             </Link>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-gray-900 text-base mb-1">Paper Management</h3>
+              <h3 className="font-bold text-gray-900 text-sm mb-1">Paper Management</h3>
               <p className="text-xs text-gray-500 mb-4">
                 Create new question papers, set duration, marking rules, and toggle published status.
               </p>
             </div>
             <Link
               href="/admin/papers"
-              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-center transition-colors"
+              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-center transition-colors"
             >
               Open Papers &rarr;
             </Link>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-gray-900 text-base mb-1">Bulk Question Import</h3>
+              <h3 className="font-bold text-gray-900 text-sm mb-1">Bulk Question Import</h3>
               <p className="text-xs text-gray-500 mb-4">
-                Ingest existing PYQ question banks directly from structured JSON or CSV format with automated validation.
+                Ingest existing PYQ question banks directly from JSON or CSV format with validation.
               </p>
             </div>
             <Link
               href="/admin/import"
-              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-center transition-colors"
+              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-center transition-colors"
             >
               Open Importer &rarr;
             </Link>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-gray-900 text-base mb-1">Authorized Members</h3>
+              <h3 className="font-bold text-gray-900 text-sm mb-1">Authorized Members</h3>
               <p className="text-xs text-gray-500 mb-4">
                 Add authorized student email addresses and passwords to grant private access to mock tests.
               </p>
             </div>
             <Link
               href="/admin/users"
-              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-center transition-colors"
+              className="text-xs font-bold text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-center transition-colors"
             >
               Manage Students &rarr;
             </Link>

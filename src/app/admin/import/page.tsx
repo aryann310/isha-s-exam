@@ -27,6 +27,10 @@ export default async function AdminImportPage() {
             <Link href="/admin" className="hover:text-white transition-colors">
               Overview
             </Link>
+            <Link href="/admin/live" className="text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              Live Proctor 🔴
+            </Link>
             <Link href="/admin/exams" className="hover:text-white transition-colors">
               Exams
             </Link>

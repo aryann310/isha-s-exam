@@ -602,3 +602,190 @@ export async function deleteStudentAction(userId: string) {
   });
   safeRevalidate("/admin");
 }
+
+// Live Proctoring & Master Control Actions
+export async function adminForceSubmitExamAction(attemptId: string) {
+  await requireAdmin();
+
+  const attempt = await prisma.attempt.findUnique({
+    where: { id: attemptId },
+    include: { paper: true, answers: true },
+  });
+
+  if (!attempt) throw new Error("Attempt not found");
+
+  const totalQuestions = await prisma.question.count({ where: { paperId: attempt.paperId } });
+  let correctCount = 0;
+  let incorrectCount = 0;
+
+  for (const ans of attempt.answers) {
+    if (ans.selectedAnswer) {
+      if (ans.isCorrect) correctCount++;
+      else incorrectCount++;
+    }
+  }
+
+  const unattemptedCount = Math.max(0, totalQuestions - (correctCount + incorrectCount));
+  const score = (correctCount * attempt.paper.correctMarks) + (incorrectCount * attempt.paper.incorrectMarks) + (unattemptedCount * attempt.paper.unattemptedMarks);
+  const accuracy = (correctCount + incorrectCount) > 0 ? (correctCount / (correctCount + incorrectCount)) * 100 : 0;
+  const timeTaken = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
+
+  await prisma.attempt.update({
+    where: { id: attemptId },
+    data: {
+      status: "AUTO_SUBMITTED",
+      submittedAt: new Date(),
+      score,
+      correct: correctCount,
+      incorrect: incorrectCount,
+      unattempted: unattemptedCount,
+      accuracy,
+      timeTaken,
+    },
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/live");
+  safeRevalidate("/admin/results");
+  return { success: true };
+}
+
+export async function adminStartExamForStudentAction(
+  userId: string,
+  paperId: string,
+  mode: "PRACTICE" | "MOCK",
+  customDurationMinutes?: number
+) {
+  await requireAdmin();
+
+  const [user, paper] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.paper.findUnique({ where: { id: paperId } }),
+  ]);
+
+  if (!user) throw new Error("Student not found");
+  if (!paper) throw new Error("Paper not found");
+
+  const durationSec = (customDurationMinutes ? customDurationMinutes * 60 : paper.durationSeconds) || 3600;
+
+  const existing = await prisma.attempt.findFirst({
+    where: { userId, paperId, status: "IN_PROGRESS" },
+  });
+
+  if (existing) {
+    return { success: true, attemptId: existing.id, isExisting: true };
+  }
+
+  const attempt = await prisma.attempt.create({
+    data: {
+      userId,
+      paperId,
+      mode,
+      status: "IN_PROGRESS",
+      startedAt: new Date(),
+      endsAt: mode === "MOCK" ? new Date(Date.now() + durationSec * 1000) : null,
+    },
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/live");
+  safeRevalidate("/admin/results");
+  safeRevalidate("/exams");
+  return { success: true, attemptId: attempt.id };
+}
+
+export async function adminExtendExamTimeAction(attemptId: string, additionalMinutes: number) {
+  await requireAdmin();
+
+  const attempt = await prisma.attempt.findUnique({
+    where: { id: attemptId },
+  });
+
+  if (!attempt || attempt.status !== "IN_PROGRESS") {
+    throw new Error("Attempt is not currently in progress");
+  }
+
+  const currentEndsAt = attempt.endsAt ? new Date(attempt.endsAt).getTime() : Date.now();
+  const baseTime = Math.max(currentEndsAt, Date.now());
+  const newEndsAt = new Date(baseTime + additionalMinutes * 60 * 1000);
+
+  await prisma.attempt.update({
+    where: { id: attemptId },
+    data: { endsAt: newEndsAt },
+  });
+
+  safeRevalidate("/admin/live");
+  return { success: true, newEndsAt };
+}
+
+export async function adminResetAttemptAction(attemptId: string) {
+  await requireAdmin();
+
+  const attempt = await prisma.attempt.findUnique({
+    where: { id: attemptId },
+    include: { paper: true },
+  });
+
+  if (!attempt) throw new Error("Attempt not found");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.attemptAnswer.deleteMany({ where: { attemptId } });
+    await tx.attempt.update({
+      where: { id: attemptId },
+      data: {
+        status: "IN_PROGRESS",
+        startedAt: new Date(),
+        endsAt: attempt.mode === "MOCK" ? new Date(Date.now() + attempt.paper.durationSeconds * 1000) : null,
+        submittedAt: null,
+        score: null,
+        correct: null,
+        incorrect: null,
+        unattempted: null,
+        accuracy: null,
+        timeTaken: null,
+      },
+    });
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/live");
+  safeRevalidate("/admin/results");
+  safeRevalidate("/exams");
+  return { success: true };
+}
+
+export async function adminDeleteAttemptAction(attemptId: string) {
+  await requireAdmin();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.attemptAnswer.deleteMany({ where: { attemptId } });
+    await tx.attempt.delete({ where: { id: attemptId } });
+  });
+
+  safeRevalidate("/admin");
+  safeRevalidate("/admin/live");
+  safeRevalidate("/admin/results");
+  return { success: true };
+}
+
+export async function adminGetLiveAttemptDetailsAction(attemptId: string) {
+  await requireAdmin();
+
+  const attempt = await prisma.attempt.findUnique({
+    where: { id: attemptId },
+    include: {
+      user: { select: { id: true, name: true, username: true, email: true } },
+      paper: {
+        include: {
+          exam: true,
+          questions: { orderBy: { questionNumber: "asc" } },
+        },
+      },
+      answers: true,
+    },
+  });
+
+  if (!attempt) throw new Error("Attempt not found");
+
+  return attempt;
+}
