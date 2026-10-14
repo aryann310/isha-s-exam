@@ -51,14 +51,12 @@ export function parseQuestionOptions(raw?: string | Record<string, any> | any[] 
 
 export function parseMarkdownQuestions(markdown: string): ParsedMarkdownQuestion[] {
   const normalized = markdown.replace(/\r\n/g, "\n");
-  
-  // Split on delimiters: `---` or blocks starting with `### Question`
+
   let rawBlocks = normalized
     .split(/\n\s*---\s*(?:\n|$)/g)
     .map((b) => b.trim())
     .filter(Boolean);
 
-  // If there are no `---` separators, try splitting on `### Question`
   if (rawBlocks.length <= 1 && normalized.includes("###")) {
     const splitByHeader = normalized.split(/(?=\n\s*###\s*(?:Question|Q)\s*\d+)/i);
     if (splitByHeader.length > 1) {
@@ -68,6 +66,8 @@ export function parseMarkdownQuestions(markdown: string): ParsedMarkdownQuestion
 
   const questions: ParsedMarkdownQuestion[] = [];
   let autoNum = 1;
+
+  const optionLineRegex = /^[ \t]*(?:[-*+]|[0-9]+\.)?[ \t]*(?:\*\*|__)?(?:Option\s+)?\(?([A-Da-d])\)?(?:\*\*|__)?(?:\s*(?:[\.:\)\-–—]|(?:\*\*|__))|\s+)[ \t]*(.*)$/;
 
   for (const block of rawBlocks) {
     const qNumMatch = block.match(/###\s*(?:Question|Q)\s*(\d+)/i);
@@ -88,59 +88,96 @@ export function parseMarkdownQuestions(markdown: string): ParsedMarkdownQuestion
     const topic = topicMatch ? topicMatch[1].trim() : null;
     const difficulty = diffMatch ? diffMatch[1].trim() : "Medium";
 
-    // Extract Question Text
-    let questionText = "";
-    const qTextMatch = block.match(
-      /\*\*(?:Question):\*\*\s*([\s\S]*?)(?=\n\s*(?:-\s*)?(?:\*\*(?:Options):\*\*|\(?\s*[A-D]\s*[\)\.]))/i
-    );
-    if (qTextMatch) {
-      questionText = qTextMatch[1].trim();
-    } else {
-      // If no explicit **Question:** header, strip metadata lines and stop at Options
-      const lines = block.split("\n");
-      const contentLines: string[] = [];
+    // Parse lines cleanly into questionText, options, and explanation
+    const lines = block.split(/\r?\n/);
+    const questionLines: string[] = [];
+    const options = { A: "", B: "", C: "", D: "" };
+    let currentOptionKey: "A" | "B" | "C" | "D" | null = null;
+    let sectionState: "QUESTION" | "OPTIONS" | "EXPLANATION" = "QUESTION";
+    const explanationLines: string[] = [];
+    let correctAnswer = "A";
 
-      for (const line of lines) {
-        if (/^###\s*/i.test(line) || /^\s*-\s*\*\*(?:Section|Topic|Difficulty)/i.test(line)) {
-          continue;
-        }
-        if (/^\s*(?:\*\*(?:Options):\*\*|[-*]?\s*\(?[A-D]\)[\s\.:])/i.test(line)) {
-          break;
-        }
-        contentLines.push(line);
-      }
-      questionText = contentLines.join("\n").trim();
+    // Extract explicit correct answer if present
+    const correctMatch = block.match(
+      /(?:\*\*Correct Answer:\*\*|Correct Answer:|Answer:)\s*\(?([A-Da-d])\)?/i
+    );
+    if (correctMatch) {
+      correctAnswer = correctMatch[1].toUpperCase();
     }
 
-    // Extract Options A, B, C, D
-    const options = { A: "", B: "", C: "", D: "" };
-    const optAMatch = block.match(
-      /(?:-\s*)?\(?A\)?[\s\.:\)]+([^\n]+(?:\n(?!\s*[-*]?\s*\(?[B-D]\)?|\s*\*\*(?:Correct Answer|Explanation))[^\n]+)*)/i
-    );
-    const optBMatch = block.match(
-      /(?:-\s*)?\(?B\)?[\s\.:\)]+([^\n]+(?:\n(?!\s*[-*]?\s*\(?[C-D]\)?|\s*\*\*(?:Correct Answer|Explanation))[^\n]+)*)/i
-    );
-    const optCMatch = block.match(
-      /(?:-\s*)?\(?C\)?[\s\.:\)]+([^\n]+(?:\n(?!\s*[-*]?\s*\(?[D]\)?|\s*\*\*(?:Correct Answer|Explanation))[^\n]+)*)/i
-    );
-    const optDMatch = block.match(
-      /(?:-\s*)?\(?D\)?[\s\.:\)]+([^\n]+(?:\n(?!\s*\*\*(?:Correct Answer|Explanation))[^\n]+)*)/i
-    );
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
 
-    if (optAMatch) options.A = optAMatch[1].trim();
-    if (optBMatch) options.B = optBMatch[1].trim();
-    if (optCMatch) options.C = optCMatch[1].trim();
-    if (optDMatch) options.D = optDMatch[1].trim();
+      // Skip header line (### Question X)
+      if (/^###\s*/i.test(trimmed)) continue;
 
-    // Extract Correct Answer
-    const correctMatch = block.match(
-      /(?:\*\*Correct Answer:\*\*|Correct Answer:|Answer:)\s*\(?([A-D])\)?/i
-    );
-    const correctAnswer = correctMatch ? correctMatch[1].toUpperCase() : "A";
+      // Skip metadata lines
+      if (/^[-*+]?\s*\*\*(?:Section|Topic|Difficulty)\*\*:/i.test(trimmed) ||
+          /^(?:Section|Topic|Difficulty):/i.test(trimmed)) {
+        continue;
+      }
 
-    // Extract Explanation
-    const expMatch = block.match(/(?:\*\*Explanation:\*\*|Explanation:)\s*([\s\S]*?)$/i);
-    const explanation = expMatch ? expMatch[1].trim() : "";
+      // Check for Explanation header
+      const expHeaderMatch = trimmed.match(/^(?:\*\*)?(?:Explanation|Solution):?(?:\*\*)?\s*(.*)$/i);
+      if (expHeaderMatch) {
+        sectionState = "EXPLANATION";
+        currentOptionKey = null;
+        if (expHeaderMatch[1]) explanationLines.push(expHeaderMatch[1].trim());
+        continue;
+      }
+
+      // Check for Correct Answer header
+      if (/^(?:\*\*)?(?:Correct Answer|Answer):/i.test(trimmed)) {
+        sectionState = "OPTIONS";
+        currentOptionKey = null;
+        continue;
+      }
+
+      // Check for Options header
+      if (/^(?:\*\*)?Options:?(?:\*\*)?$/i.test(trimmed)) {
+        sectionState = "OPTIONS";
+        currentOptionKey = null;
+        continue;
+      }
+
+      // Check if line is an Option line
+      const optMatch = line.match(optionLineRegex);
+      if (optMatch) {
+        const key = optMatch[1].toUpperCase() as "A" | "B" | "C" | "D";
+        const hasBulletOrParen = /^[ \t]*(?:[-*+]|[0-9]+\.)|\([A-Da-d]\)|(?:\*\*|__)[\(\[]?[A-Da-d]|Option\s+[A-D]/i.test(line);
+        const hasDelimiter = /^[ \t]*(?:[-*+]|[0-9]+\.)?[ \t]*(?:\*\*|__)?\(?[A-Da-d]\)?(?:\*\*|__)?[\.:\)\-–—]/i.test(line);
+
+        if (sectionState === "OPTIONS" || hasBulletOrParen || hasDelimiter) {
+          sectionState = "OPTIONS";
+          currentOptionKey = key;
+          options[key] = optMatch[2].trim();
+          continue;
+        }
+      }
+
+      // Route line according to sectionState
+      if (sectionState === "EXPLANATION") {
+        explanationLines.push(line);
+      } else if (sectionState === "OPTIONS") {
+        if (currentOptionKey && trimmed) {
+          options[currentOptionKey] = options[currentOptionKey]
+            ? `${options[currentOptionKey]}\n${trimmed}`
+            : trimmed;
+        }
+      } else {
+        // QUESTION state
+        const qHeaderMatch = trimmed.match(/^\*\*(?:Question):\*\*\s*(.*)$/i);
+        if (qHeaderMatch) {
+          if (qHeaderMatch[1]) questionLines.push(qHeaderMatch[1].trim());
+        } else {
+          questionLines.push(line);
+        }
+      }
+    }
+
+    const questionText = questionLines.join("\n").trim();
+    const explanation = explanationLines.join("\n").trim();
 
     if (questionText || options.A) {
       questions.push({

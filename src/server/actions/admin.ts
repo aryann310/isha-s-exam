@@ -481,7 +481,13 @@ export async function bulkImportQuestionsAction(
       const q = questionsList[i];
       const qNum = q.questionNumber || q.question_number || (i + 1);
       const text = q.questionText || q.question || "";
-      const opts = typeof q.options === "object" ? JSON.stringify(q.options) : q.options || "{}";
+      const optionsObj = parseQuestionOptions(q.options ?? {
+        A: q.optionA ?? q.option_a ?? q.a ?? "",
+        B: q.optionB ?? q.option_b ?? q.b ?? "",
+        C: q.optionC ?? q.option_c ?? q.c ?? "",
+        D: q.optionD ?? q.option_d ?? q.d ?? "",
+      });
+      const opts = JSON.stringify(optionsObj);
       const correct = q.correctAnswer || q.correct_answer || "A";
       const explanation = q.explanation || "";
       const section = q.section || null;
