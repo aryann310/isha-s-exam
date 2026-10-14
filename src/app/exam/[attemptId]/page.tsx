@@ -14,9 +14,12 @@ export default async function ExamPage({
   if (!session) redirect("/login");
 
   const resolvedParams = await params;
+  const isAdmin = session.role === "ADMIN";
 
   const attempt = await prisma.attempt.findFirst({
-    where: { id: resolvedParams.attemptId, userId: session.userId as string },
+    where: isAdmin
+      ? { id: resolvedParams.attemptId }
+      : { id: resolvedParams.attemptId, userId: session.userId as string },
     include: {
       paper: true,
       answers: true,

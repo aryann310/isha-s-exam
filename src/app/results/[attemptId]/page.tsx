@@ -14,9 +14,12 @@ export default async function ResultPage({
   if (!session) redirect("/login");
 
   const resolvedParams = await params;
+  const isAdmin = session.role === "ADMIN";
 
   const attempt = await prisma.attempt.findFirst({
-    where: { id: resolvedParams.attemptId, userId: session.userId as string },
+    where: isAdmin
+      ? { id: resolvedParams.attemptId }
+      : { id: resolvedParams.attemptId, userId: session.userId as string },
     include: {
       paper: {
         include: {
@@ -28,7 +31,7 @@ export default async function ResultPage({
     },
   });
 
-  if (!attempt || attempt.status === "IN_PROGRESS") return notFound();
+  if (!attempt || (attempt.status === "IN_PROGRESS" && !isAdmin)) return notFound();
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -69,7 +72,7 @@ export default async function ResultPage({
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-xs">
         <div className="flex items-center gap-3">
           <span className="bg-gray-950 text-white text-xs font-black px-2 py-0.5 rounded">
-            {attempt.paper.exam.name}
+            {attempt.paper?.exam?.name || "Exam"}
           </span>
           <h1 className="text-lg font-bold tracking-tight text-gray-900">EXAMINATION RESULT</h1>
         </div>
@@ -83,9 +86,9 @@ export default async function ResultPage({
       <main className="flex-1 max-w-4xl w-full mx-auto p-6 md:p-12">
         <div className="bg-white border border-gray-200 rounded-2xl p-8 md:p-12 shadow-xs text-center">
           <p className="text-xs uppercase tracking-widest font-black text-gray-400 mb-1">
-            {attempt.paper.exam.name} • {attempt.mode} TEST
+            {attempt.paper?.exam?.name || "Exam"} • {attempt.mode} TEST
           </p>
-          <h2 className="text-3xl font-black text-gray-950 mb-8">{attempt.paper.title}</h2>
+          <h2 className="text-3xl font-black text-gray-950 mb-8">{attempt.paper?.title || "Paper"}</h2>
 
           {/* Primary Score Counter */}
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 mb-8">

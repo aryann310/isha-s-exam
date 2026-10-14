@@ -15,9 +15,12 @@ export default async function SolutionsPage({
   if (!session) redirect("/login");
 
   const resolvedParams = await params;
+  const isAdmin = session.role === "ADMIN";
 
   const attempt = await prisma.attempt.findFirst({
-    where: { id: resolvedParams.attemptId, userId: session.userId as string },
+    where: isAdmin
+      ? { id: resolvedParams.attemptId }
+      : { id: resolvedParams.attemptId, userId: session.userId as string },
     include: {
       paper: {
         include: {
@@ -29,16 +32,16 @@ export default async function SolutionsPage({
     },
   });
 
-  if (!attempt || attempt.status === "IN_PROGRESS") return notFound();
+  if (!attempt || (attempt.status === "IN_PROGRESS" && !isAdmin)) return notFound();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Link href={`/results/${attempt.id}`} className="text-sm font-medium text-gray-500 hover:text-black">
-            &larr; Back to Results
+          <Link href={isAdmin ? "/admin/live" : `/results/${attempt.id}`} className="text-sm font-medium text-gray-500 hover:text-black">
+            &larr; {isAdmin ? "Back to Live Proctor" : "Back to Results"}
           </Link>
-          <h1 className="text-xl font-bold tracking-tight">{attempt.paper.title} — COMPLETE SOLUTIONS</h1>
+          <h1 className="text-xl font-bold tracking-tight">{attempt.paper?.title || "Exam"} — COMPLETE SOLUTIONS</h1>
         </div>
       </header>
       

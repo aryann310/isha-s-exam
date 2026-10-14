@@ -7,8 +7,9 @@ export async function saveAnswerAction(attemptId: string, questionId: string, se
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
+  const isAdmin = session.role === "ADMIN";
   const attempt = await prisma.attempt.findFirst({
-    where: { id: attemptId, userId: session.userId as string },
+    where: isAdmin ? { id: attemptId } : { id: attemptId, userId: session.userId as string },
     include: { paper: true },
   });
 
@@ -49,8 +50,9 @@ export async function submitExamAction(attemptId: string) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
+  const isAdmin = session.role === "ADMIN";
   const attempt = await prisma.attempt.findFirst({
-    where: { id: attemptId, userId: session.userId as string },
+    where: isAdmin ? { id: attemptId } : { id: attemptId, userId: session.userId as string },
     include: { 
       paper: true,
       answers: true,

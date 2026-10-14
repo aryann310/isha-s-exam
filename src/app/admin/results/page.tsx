@@ -99,9 +99,9 @@ export default async function AdminResultsPage() {
                       </td>
                       <td className="px-6 py-4 font-semibold text-gray-800">
                         <span className="bg-gray-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded mr-1.5">
-                          {att.paper.exam.name}
+                          {att.paper?.exam?.name || "Exam"}
                         </span>
-                        {att.paper.title}
+                        {att.paper?.title || "Paper"}
                       </td>
                       <td className="px-6 py-4">
                         <span

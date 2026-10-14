@@ -370,7 +370,7 @@ export function LiveProctorHub({
           {displayedAttempts.map((att) => {
             const isLive = att.status === "IN_PROGRESS";
             const answeredCount = att.answers.filter((a) => a.selectedAnswer).length;
-            const totalQuestions = att.paper.totalQuestions || 1;
+            const totalQuestions = att.paper?.totalQuestions || 1;
             const progressPct = Math.round((answeredCount / totalQuestions) * 100);
 
             // Live calculate score so far
@@ -418,9 +418,9 @@ export function LiveProctorHub({
 
                     <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
                       <span className="bg-gray-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-                        {att.paper.exam.name}
+                        {att.paper?.exam?.name || "Exam"}
                       </span>
-                      <span className="font-bold text-gray-900">{att.paper.title}</span>
+                      <span className="font-bold text-gray-900">{att.paper?.title || "Paper"}</span>
                       <span>•</span>
                       <span>
                         Started:{" "}
@@ -440,7 +440,7 @@ export function LiveProctorHub({
                         />
                       </div>
                       <span className="text-xs font-semibold text-gray-600">
-                        {answeredCount} of {att.paper.totalQuestions} Qs Answered ({progressPct}%)
+                        {answeredCount} of {att.paper?.totalQuestions || 0} Qs Answered ({progressPct}%)
                       </span>
                       {isLive ? (
                         <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-mono">

@@ -134,9 +134,9 @@ export default async function ExamsPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-black bg-gray-900 text-white px-2 py-0.5 rounded">
-                        {att.paper.exam.name}
+                        {att.paper?.exam?.name || "Exam"}
                       </span>
-                      <span className="text-sm font-bold text-gray-900">{att.paper.title}</span>
+                      <span className="text-sm font-bold text-gray-900">{att.paper?.title || "Paper"}</span>
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                           att.mode === "MOCK" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
