@@ -2,9 +2,9 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createQuestionAction, updateQuestionAction, deleteQuestionAction } from "@/server/actions/admin";
+import { deleteQuestionAction } from "@/server/actions/admin";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
-import { DiagramUploader } from "@/components/admin/diagram-uploader";
+import { QuestionEditorForm } from "@/components/admin/question-editor-form";
 
 export const dynamic = "force-dynamic";
 
@@ -123,160 +123,14 @@ export default async function AdminQuestionsPage({
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Question Form (Create / Edit) */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs h-fit">
-            <div className="flex justify-between items-center mb-1">
-              <h3 className="text-lg font-bold text-gray-900">
-                {editingQuestion
-                  ? `Edit Question #${editingQuestion.questionNumber}`
-                  : "Add Question"}
-              </h3>
-              {editingQuestion && (
-                <Link
-                  href={`/admin/questions?paperId=${selectedPaperId}`}
-                  className="text-xs text-rose-600 hover:underline font-semibold"
-                >
-                  Cancel Edit
-                </Link>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mb-4">
-              {editingQuestion ? "Updating question in:" : "Adding to:"}{" "}
-              <span className="font-semibold text-gray-800">{currentPaper?.title}</span>
-            </p>
-
-            <form
-              key={editingQuestion ? editingQuestion.id : "new"}
-              action={editingQuestion ? updateQuestionAction : createQuestionAction}
-              className="space-y-4 text-xs font-semibold"
-            >
-              {editingQuestion ? (
-                <input type="hidden" name="id" value={editingQuestion.id} />
-              ) : (
-                <input type="hidden" name="paperId" value={selectedPaperId} />
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 mb-1">Question Number</label>
-                  <input
-                    name="questionNumber"
-                    type="number"
-                    defaultValue={editingQuestion ? editingQuestion.questionNumber : nextQuestionNumber}
-                    required
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 mb-1">Difficulty</label>
-                  <select
-                    name="difficulty"
-                    defaultValue={editingQuestion?.difficulty || "Medium"}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-gray-900 outline-none"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 mb-1">Section</label>
-                  <input
-                    name="section"
-                    placeholder="e.g. Quantitative Techniques"
-                    defaultValue={editingQuestion?.section || "Quantitative Techniques"}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 mb-1">Topic</label>
-                  <input
-                    name="topic"
-                    placeholder="e.g. Percentages"
-                    defaultValue={editingQuestion?.topic || ""}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 mb-1">Question Text (Supports Markdown, Math & Diagrams)</label>
-                <div className="mb-2">
-                  <DiagramUploader compact label="Attach Diagram" />
-                </div>
-                <textarea
-                  name="questionText"
-                  rows={4}
-                  required
-                  defaultValue={editingQuestion?.questionText || ""}
-                  placeholder="Enter question statement (paste diagram markdown snippet here if applicable)..."
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
-                />
-              </div>
-
-              {/* Options */}
-              <div className="space-y-2">
-                <label className="block text-gray-700">Answer Options</label>
-                {(["A", "B", "C", "D"] as const).map((optKey) => (
-                  <div key={optKey} className="flex items-center gap-2">
-                    <span className="font-bold text-gray-700 w-5">{optKey}:</span>
-                    <input
-                      name={`option${optKey}`}
-                      placeholder={`Option ${optKey} text`}
-                      defaultValue={editOptions[optKey] || ""}
-                      required
-                      className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <label className="block text-gray-700 mb-1">Correct Answer Key</label>
-                <select
-                  name="correctAnswer"
-                  defaultValue={editingQuestion?.correctAnswer || "A"}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-sm font-bold focus:ring-2 focus:ring-gray-900 outline-none"
-                >
-                  <option value="A">Option A</option>
-                  <option value="B">Option B</option>
-                  <option value="C">Option C</option>
-                  <option value="D">Option D</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 mb-1">Detailed Solution / Explanation</label>
-                <textarea
-                  name="explanation"
-                  rows={3}
-                  defaultValue={editingQuestion?.explanation || ""}
-                  placeholder="Step-by-step solution shown in Practice mode and post-exam review..."
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition-colors text-sm shadow-sm"
-                >
-                  {editingQuestion ? "Save Changes" : "+ Add Question"}
-                </button>
-                {editingQuestion && (
-                  <Link
-                    href={`/admin/questions?paperId=${selectedPaperId}`}
-                    className="border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-50 text-sm text-center"
-                  >
-                    Cancel
-                  </Link>
-                )}
-              </div>
-            </form>
-          </div>
+          {/* Question Form (Create / Edit with Integrated Diagram Support) */}
+          <QuestionEditorForm
+            paperId={selectedPaperId}
+            currentPaperTitle={currentPaper?.title}
+            editingQuestion={editingQuestion as any}
+            nextQuestionNumber={nextQuestionNumber}
+            initialOptions={editOptions}
+          />
 
           {/* Questions List */}
           <div className="lg:col-span-2 space-y-4">

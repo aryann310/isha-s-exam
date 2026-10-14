@@ -345,6 +345,9 @@ export async function createQuestionAction(formData: FormData) {
   });
 
   safeRevalidate("/admin");
+  safeRevalidate("/admin/questions");
+  safeRevalidate("/admin/papers");
+  return { success: true };
 }
 
 export async function updateQuestionAction(formData: FormData) {
@@ -386,6 +389,9 @@ export async function updateQuestionAction(formData: FormData) {
   });
 
   safeRevalidate("/admin");
+  safeRevalidate("/admin/questions");
+  safeRevalidate("/admin/papers");
+  return { success: true };
 }
 
 export async function deleteQuestionAction(questionId: string) {
@@ -395,7 +401,7 @@ export async function deleteQuestionAction(questionId: string) {
     where: { id: questionId },
   });
 
-  if (!question) return;
+  if (!question) return { success: false };
 
   const paperId = question.paperId;
   await prisma.$transaction(async (tx) => {
@@ -409,6 +415,9 @@ export async function deleteQuestionAction(questionId: string) {
   });
 
   safeRevalidate("/admin");
+  safeRevalidate("/admin/questions");
+  safeRevalidate("/admin/papers");
+  return { success: true };
 }
 
 // Bulk Question Import (JSON and CSV formats supported)
