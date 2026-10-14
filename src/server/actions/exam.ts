@@ -15,20 +15,6 @@ export async function startExamAction(formData: FormData) {
     throw new Error("Invalid parameters");
   }
 
-  // Check if there is already an active attempt
-  const existingAttempt = await prisma.attempt.findFirst({
-    where: {
-      userId: session.userId as string,
-      paperId,
-      status: "IN_PROGRESS",
-    },
-  });
-
-  if (existingAttempt) {
-    // If practicing or mocking, just resume it
-    redirect(`/exam/${existingAttempt.id}`);
-  }
-
   const param = decodeURIComponent(paperId).trim();
   const words = param.toLowerCase().split(/[\s-]+/).filter(Boolean);
 
@@ -54,6 +40,19 @@ export async function startExamAction(formData: FormData) {
 
   if (!paper) {
     throw new Error("Paper not found");
+  }
+
+  // Check if there is already an active attempt for this paper
+  const existingAttempt = await prisma.attempt.findFirst({
+    where: {
+      userId: session.userId as string,
+      paperId: paper.id,
+      status: "IN_PROGRESS",
+    },
+  });
+
+  if (existingAttempt) {
+    redirect(`/exam/${existingAttempt.id}`);
   }
 
   const attempt = await prisma.attempt.create({

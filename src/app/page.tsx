@@ -1,13 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const session = await getSession();
-  if (session) {
-    if (session.role === "ADMIN") {
-      redirect("/admin");
-    }
-    redirect("/exams");
-  }
-  redirect("/login");
+  redirect(session ? (session.role === "ADMIN" ? "/admin" : "/exams") : "/login");
 }
