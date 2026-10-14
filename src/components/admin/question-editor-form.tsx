@@ -4,6 +4,7 @@ import { useState, useRef, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
+import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 import { createQuestionAction, updateQuestionAction } from "@/server/actions/admin";
 
 interface QuestionEditorFormProps {
@@ -16,11 +17,12 @@ interface QuestionEditorFormProps {
     section: string | null;
     topic: string | null;
     difficulty: string | null;
+    options?: string | null;
     correctAnswer: string;
     explanation: string | null;
   } | null;
   nextQuestionNumber: number;
-  initialOptions: Record<string, string>;
+  initialOptions?: Record<string, string>;
 }
 
 export function QuestionEditorForm({
@@ -57,7 +59,9 @@ export function QuestionEditorForm({
   const [questionText, setQuestionText] = useState<string>(initial.text);
   const [attachedDiagram, setAttachedDiagram] = useState<string | null>(initial.diagram);
   const [diagramCaption, setDiagramCaption] = useState<string>(initial.caption);
-  const [options, setOptions] = useState<Record<string, string>>(initialOptions);
+  const [options, setOptions] = useState<Record<string, string>>(() =>
+    parseQuestionOptions(editingQuestion?.options || initialOptions)
+  );
   const [correctAnswer, setCorrectAnswer] = useState<string>(editingQuestion?.correctAnswer || "A");
   const [explanation, setExplanation] = useState<string>(editingQuestion?.explanation || "");
 
@@ -80,8 +84,11 @@ export function QuestionEditorForm({
       setDiagramCaption(parsed.caption);
       setCorrectAnswer(editingQuestion.correctAnswer || "A");
       setExplanation(editingQuestion.explanation || "");
+      setOptions(parseQuestionOptions(editingQuestion.options || initialOptions));
+    } else {
+      setOptions(parseQuestionOptions(initialOptions));
     }
-  }, [editingQuestion?.id]);
+  }, [editingQuestion?.id, editingQuestion?.options, initialOptions]);
 
   // Image optimization & canvas compression
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

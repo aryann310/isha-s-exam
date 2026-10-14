@@ -14,6 +14,41 @@ export interface ParsedMarkdownQuestion {
   explanation: string;
 }
 
+export function parseQuestionOptions(raw?: string | Record<string, any> | any[] | null): Record<string, string> {
+  const fallback: Record<string, string> = { A: "", B: "", C: "", D: "" };
+  if (!raw) return fallback;
+
+  let parsed: any = raw;
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (Array.isArray(parsed)) {
+    return {
+      A: String(parsed[0] ?? ""),
+      B: String(parsed[1] ?? ""),
+      C: String(parsed[2] ?? ""),
+      D: String(parsed[3] ?? ""),
+    };
+  }
+
+  if (typeof parsed === "object" && parsed !== null) {
+    return {
+      A: String(parsed.A ?? parsed.a ?? parsed.optionA ?? parsed["1"] ?? ""),
+      B: String(parsed.B ?? parsed.b ?? parsed.optionB ?? parsed["2"] ?? ""),
+      C: String(parsed.C ?? parsed.c ?? parsed.optionC ?? parsed["3"] ?? ""),
+      D: String(parsed.D ?? parsed.d ?? parsed.optionD ?? parsed["4"] ?? ""),
+    };
+  }
+
+  return fallback;
+}
+
+
 export function parseMarkdownQuestions(markdown: string): ParsedMarkdownQuestion[] {
   const normalized = markdown.replace(/\r\n/g, "\n");
   

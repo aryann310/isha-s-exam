@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Attempt, Paper, Question, AttemptAnswer } from "@prisma/client";
 import { saveAnswerAction, submitExamAction } from "@/server/actions/engine";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
+import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 
 type OptionType = { [key: string]: string };
 
@@ -126,10 +127,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
   const currentQuestion = questions[currentIndex];
   const isConfirmed = !!results[currentQuestion?.id];
 
-  let optionsObj: OptionType = {};
-  try {
-    optionsObj = JSON.parse(currentQuestion.options);
-  } catch {}
+  const optionsObj: OptionType = parseQuestionOptions(currentQuestion?.options);
 
   // Option Selection: Selects option locally before user clicks Confirm
   const handleSelectOption = (optionKey: string) => {

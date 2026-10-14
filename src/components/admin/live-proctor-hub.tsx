@@ -12,6 +12,7 @@ import {
   adminGetLiveAttemptDetailsAction,
 } from "@/server/actions/admin";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
+import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 
 export interface StudentOption {
   id: string;
@@ -789,10 +790,7 @@ export function LiveProctorHub({
                 {inspectData.paper.questions[inspectQuestionIndex] && (() => {
                   const q = inspectData.paper.questions[inspectQuestionIndex];
                   const ans = inspectData.answers.find((a: any) => a.questionId === q.id);
-                  let opts: Record<string, string> = {};
-                  try {
-                    opts = JSON.parse(q.options);
-                  } catch {}
+                  const opts = parseQuestionOptions(q.options);
 
                   return (
                     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-5">

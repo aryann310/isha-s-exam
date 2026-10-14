@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Question, AttemptAnswer } from "@prisma/client";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
+import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 
 type FilterType = "ALL" | "CORRECT" | "INCORRECT" | "UNATTEMPTED";
 
@@ -54,10 +55,7 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
             const ans = answers.find((a) => a.questionId === q.id);
             const selectedAnswer = ans?.selectedAnswer;
 
-            let optionsObj: Record<string, string> = {};
-            try {
-              optionsObj = JSON.parse(q.options);
-            } catch {}
+            const optionsObj = parseQuestionOptions(q.options);
 
             return (
               <div key={q.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xs">

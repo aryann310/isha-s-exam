@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { deleteQuestionAction } from "@/server/actions/admin";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
+import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 import { QuestionEditorForm } from "@/components/admin/question-editor-form";
 
 export const dynamic = "force-dynamic";
@@ -36,12 +37,9 @@ export default async function AdminQuestionsPage({
     ? questions.find((q) => q.id === resolvedParams.editId)
     : null;
 
-  let editOptions: Record<string, string> = { A: "", B: "", C: "", D: "" };
-  if (editingQuestion) {
-    try {
-      editOptions = JSON.parse(editingQuestion.options);
-    } catch (e) {}
-  }
+  const editOptions = editingQuestion
+    ? parseQuestionOptions(editingQuestion.options)
+    : { A: "", B: "", C: "", D: "" };
 
   const nextQuestionNumber =
     questions.length > 0
@@ -125,6 +123,7 @@ export default async function AdminQuestionsPage({
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Question Form (Create / Edit with Integrated Diagram Support) */}
           <QuestionEditorForm
+            key={editingQuestion ? `edit-${editingQuestion.id}` : `new-${selectedPaperId}-${nextQuestionNumber}`}
             paperId={selectedPaperId}
             currentPaperTitle={currentPaper?.title}
             editingQuestion={editingQuestion as any}
@@ -152,10 +151,7 @@ export default async function AdminQuestionsPage({
               </div>
             ) : (
               questions.map((q) => {
-                let opts: Record<string, string> = {};
-                try {
-                  opts = JSON.parse(q.options);
-                } catch (e) {}
+                const opts = parseQuestionOptions(q.options);
 
                 const isCurrentlyEditing = q.id === editingQuestion?.id;
 

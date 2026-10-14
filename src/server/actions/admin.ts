@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { parseMarkdownQuestions } from "@/lib/parse-markdown-questions";
+import { parseMarkdownQuestions, parseQuestionOptions } from "@/lib/parse-markdown-questions";
 
 function safeRevalidate(path: string) {
   try {
@@ -367,12 +367,21 @@ export async function updateQuestionAction(formData: FormData) {
   const optionC = formData.get("optionC") as string;
   const optionD = formData.get("optionD") as string;
 
-  const optionsObj: Record<string, string> = {
-    A: optionA,
-    B: optionB,
-    C: optionC,
-    D: optionD,
-  };
+  const existing = await prisma.question.findUnique({ where: { id } });
+  const existingOpts = existing ? parseQuestionOptions(existing.options) : { A: "", B: "", C: "", D: "" };
+
+  const hasNewOptions = [optionA, optionB, optionC, optionD].some(
+    (opt) => opt !== undefined && opt !== null && opt.trim() !== ""
+  );
+
+  const optionsObj: Record<string, string> = hasNewOptions
+    ? {
+        A: optionA !== undefined && optionA.trim() !== "" ? optionA : existingOpts.A,
+        B: optionB !== undefined && optionB.trim() !== "" ? optionB : existingOpts.B,
+        C: optionC !== undefined && optionC.trim() !== "" ? optionC : existingOpts.C,
+        D: optionD !== undefined && optionD.trim() !== "" ? optionD : existingOpts.D,
+      }
+    : existingOpts;
 
   await prisma.question.update({
     where: { id },
@@ -391,6 +400,9 @@ export async function updateQuestionAction(formData: FormData) {
   safeRevalidate("/admin");
   safeRevalidate("/admin/questions");
   safeRevalidate("/admin/papers");
+  if (existing?.paperId) {
+    safeRevalidate(`/papers/${existing.paperId}`);
+  }
   return { success: true };
 }
 
