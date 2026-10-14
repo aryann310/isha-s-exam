@@ -465,15 +465,46 @@ export async function bulkImportQuestionsAction(
       importedCount++;
     }
   } else if (format === "json") {
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(rawData);
     } catch {
       throw new Error("Invalid JSON format");
     }
 
-    const questionsList = Array.isArray(parsed) ? parsed : parsed.questions;
-    if (!Array.isArray(questionsList)) {
+    interface QuestionImportItem {
+      questionNumber?: number;
+      question_number?: number;
+      questionText?: string;
+      question?: string;
+      options?: Record<string, unknown> | unknown[] | string;
+      optionA?: string;
+      option_a?: string;
+      a?: string;
+      optionB?: string;
+      option_b?: string;
+      b?: string;
+      optionC?: string;
+      option_c?: string;
+      c?: string;
+      optionD?: string;
+      option_d?: string;
+      d?: string;
+      correctAnswer?: string;
+      correct_answer?: string;
+      explanation?: string;
+      section?: string | null;
+      topic?: string | null;
+      difficulty?: string;
+    }
+
+    const questionsList: QuestionImportItem[] | null = Array.isArray(parsed)
+      ? (parsed as QuestionImportItem[])
+      : parsed && typeof parsed === "object" && "questions" in parsed && Array.isArray((parsed as { questions: unknown }).questions)
+      ? ((parsed as { questions: unknown }).questions as QuestionImportItem[])
+      : null;
+
+    if (!questionsList) {
       throw new Error("Expected an array of questions or an object with a 'questions' array.");
     }
 

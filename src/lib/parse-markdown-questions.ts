@@ -14,11 +14,11 @@ export interface ParsedMarkdownQuestion {
   explanation: string;
 }
 
-export function parseQuestionOptions(raw?: string | Record<string, any> | any[] | null): Record<string, string> {
+export function parseQuestionOptions(raw?: string | Record<string, unknown> | unknown[] | null): Record<string, string> {
   const fallback: Record<string, string> = { A: "", B: "", C: "", D: "" };
   if (!raw) return fallback;
 
-  let parsed: any = raw;
+  let parsed: unknown = raw;
   if (typeof raw === "string") {
     try {
       parsed = JSON.parse(raw);
@@ -37,11 +37,12 @@ export function parseQuestionOptions(raw?: string | Record<string, any> | any[] 
   }
 
   if (typeof parsed === "object" && parsed !== null) {
+    const obj = parsed as Record<string, unknown>;
     return {
-      A: String(parsed.A ?? parsed.a ?? parsed.optionA ?? parsed["1"] ?? ""),
-      B: String(parsed.B ?? parsed.b ?? parsed.optionB ?? parsed["2"] ?? ""),
-      C: String(parsed.C ?? parsed.c ?? parsed.optionC ?? parsed["3"] ?? ""),
-      D: String(parsed.D ?? parsed.d ?? parsed.optionD ?? parsed["4"] ?? ""),
+      A: String(obj.A ?? obj.a ?? obj.optionA ?? obj["1"] ?? ""),
+      B: String(obj.B ?? obj.b ?? obj.optionB ?? obj["2"] ?? ""),
+      C: String(obj.C ?? obj.c ?? obj.optionC ?? obj["3"] ?? ""),
+      D: String(obj.D ?? obj.d ?? obj.optionD ?? obj["4"] ?? ""),
     };
   }
 
