@@ -28,7 +28,7 @@ export default async function AdminQuestionsPage({
   const questions = selectedPaperId
     ? await prisma.question.findMany({
         where: { paperId: selectedPaperId },
-        orderBy: { questionNumber: "asc" },
+        orderBy: [{ questionNumber: "asc" }, { id: "asc" }],
       })
     : [];
 
@@ -126,7 +126,7 @@ export default async function AdminQuestionsPage({
             key={editingQuestion ? `edit-${editingQuestion.id}` : `new-${selectedPaperId}-${nextQuestionNumber}`}
             paperId={selectedPaperId}
             currentPaperTitle={currentPaper?.title}
-            editingQuestion={editingQuestion as any}
+            editingQuestion={editingQuestion}
             nextQuestionNumber={nextQuestionNumber}
             initialOptions={editOptions}
           />

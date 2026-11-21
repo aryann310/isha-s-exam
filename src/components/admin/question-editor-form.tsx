@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition, useEffect } from "react";
+import { useState, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
@@ -71,24 +71,7 @@ export function QuestionEditorForm({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync state if editingQuestion changes
-  useEffect(() => {
-    if (editingQuestion) {
-      const parsed = extractInitialDiagram();
-      setQuestionNumber(editingQuestion.questionNumber);
-      setDifficulty(editingQuestion.difficulty || "Medium");
-      setSection(editingQuestion.section || "Quantitative Techniques");
-      setTopic(editingQuestion.topic || "");
-      setQuestionText(parsed.text);
-      setAttachedDiagram(parsed.diagram);
-      setDiagramCaption(parsed.caption);
-      setCorrectAnswer(editingQuestion.correctAnswer || "A");
-      setExplanation(editingQuestion.explanation || "");
-      setOptions(parseQuestionOptions(editingQuestion.options || initialOptions));
-    } else {
-      setOptions(parseQuestionOptions(initialOptions));
-    }
-  }, [editingQuestion?.id, editingQuestion?.options, initialOptions]);
+
 
   // Image optimization & canvas compression
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,10 +183,18 @@ export function QuestionEditorForm({
     startTransition(async () => {
       try {
         if (editingQuestion) {
-          await updateQuestionAction(formData);
+          const res = await updateQuestionAction(formData);
+          if (!res.success) {
+            setStatusMessage({ text: res.error ?? "Failed to save question.", isError: true });
+            return;
+          }
           setStatusMessage({ text: `Question #${questionNumber} updated successfully!`, isError: false });
         } else {
-          await createQuestionAction(formData);
+          const res = await createQuestionAction(formData);
+          if (!res.success) {
+            setStatusMessage({ text: res.error ?? "Failed to save question.", isError: true });
+            return;
+          }
           setStatusMessage({ text: `Question #${questionNumber} saved successfully!`, isError: false });
           // Reset form for next question
           setQuestionNumber((prev) => prev + 1);
@@ -214,8 +205,8 @@ export function QuestionEditorForm({
           if (fileInputRef.current) fileInputRef.current.value = "";
         }
         router.refresh();
-      } catch (err: any) {
-        setStatusMessage({ text: err?.message || "Failed to save question. Please try again.", isError: true });
+      } catch (err: unknown) {
+        setStatusMessage({ text: err instanceof Error ? err.message : "Failed to save question. Please try again.", isError: true });
       }
     });
   };

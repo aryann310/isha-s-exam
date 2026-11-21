@@ -86,8 +86,8 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
         setIsActive(true);
         setIsAutoSlug(true);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to create exam");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to create exam");
       }
     });
   };
@@ -105,8 +105,8 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
         setSuccess("Exam updated successfully!");
         setEditingExam(null);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to update exam");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to update exam");
       }
     });
   };
@@ -119,8 +119,8 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
         await toggleExamStatusAction(examId, !currentStatus);
         setSuccess(`Exam "${examName}" is now ${!currentStatus ? "Active (Published)" : "Disabled (Draft)"}.`);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to update status");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to update status");
       }
     });
   };
@@ -142,8 +142,8 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
         await deleteExamAction(examId);
         setSuccess(`Exam "${examName}" was deleted.`);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to delete exam");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to delete exam");
       }
     });
   };

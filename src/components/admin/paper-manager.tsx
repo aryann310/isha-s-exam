@@ -71,8 +71,8 @@ export function PaperManager({
         setSuccess("Paper published / created successfully!");
         formEl.reset();
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to create paper");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to create paper");
       }
     });
   };
@@ -90,8 +90,8 @@ export function PaperManager({
         setSuccess("Paper updated successfully!");
         setEditingPaper(null);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to update paper");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to update paper");
       }
     });
   };
@@ -104,8 +104,8 @@ export function PaperManager({
         await togglePaperStatusAction(paperId, !currentStatus);
         setSuccess(`"${title}" is now ${!currentStatus ? "Published (Live)" : "Unpublished (Draft)"}.`);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to update status");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to update status");
       }
     });
   };
@@ -125,8 +125,8 @@ export function PaperManager({
         await deletePaperAction(paperId);
         setSuccess(`"${title}" deleted successfully.`);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to delete paper");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to delete paper");
       }
     });
   };

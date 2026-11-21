@@ -25,7 +25,7 @@ export default async function SolutionsPage({
       paper: {
         include: {
           exam: true,
-          questions: { orderBy: { questionNumber: "asc" } },
+          questions: { orderBy: [{ questionNumber: "asc" }, { id: "asc" }] },
         },
       },
       answers: true,

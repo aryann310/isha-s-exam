@@ -4,6 +4,7 @@ import { useState } from "react";
 import { bulkImportQuestionsAction } from "@/server/actions/admin";
 import { useRouter } from "next/navigation";
 import { DiagramUploader } from "@/components/admin/diagram-uploader";
+import type { ImportMode, ImportResult } from "@/lib/question-import";
 
 const SAMPLE_MARKDOWN = `### Question 1
 - **Section**: Quantitative, Data Interpretation & Data Sufficiency
@@ -82,7 +83,7 @@ const SAMPLE_JSON = JSON.stringify(
 );
 
 const SAMPLE_CSV = `question_number,section,topic,question,option_a,option_b,option_c,option_d,correct_answer,explanation,difficulty
-1,Quantitative, Data Interpretation & Data Sufficiency,Percentages,"What is 20% of 25% of 300?",12,15,18,20,B,"25% of 300 = 75. 20% of 75 = 15. Hence B.",Easy
+1,"Quantitative, Data Interpretation & Data Sufficiency",Percentages,"What is 20% of 25% of 300?",12,15,18,20,B,"25% of 300 = 75. 20% of 75 = 15. Hence B.",Easy
 2,General English,Vocabulary,"Choose the synonym of 'Ephemeral':",Permanent,Transient,Celestial,Subtle,B,"Ephemeral means lasting for a very short time. Transient is the synonym.",Easy`;
 
 export function ImportClient({ papers }: { papers: Array<{ id: string; title: string; exam: { name: string } }> }) {
@@ -90,8 +91,14 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
   const [selectedPaperId, setSelectedPaperId] = useState(papers[0]?.id || "");
   const [format, setFormat] = useState<"markdown" | "json" | "csv">("markdown");
   const [rawData, setRawData] = useState(SAMPLE_MARKDOWN);
+  const [mode, setMode] = useState<ImportMode>("append");
   const [status, setStatus] = useState<{ message: string; isError: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
+  // Result of the last dry run; the import button only unlocks for exactly these inputs.
+  const [preview, setPreview] = useState<{ key: string; result: ImportResult } | null>(null);
+  const inputKey = `${selectedPaperId}|${format}|${mode}|${rawData}`;
+  const previewIsCurrent = preview?.key === inputKey;
+  const selectedPaper = papers.find((p) => p.id === selectedPaperId);
 
   const getSample = (fmt: "markdown" | "json" | "csv") => {
     if (fmt === "markdown") return SAMPLE_MARKDOWN;
@@ -122,7 +129,7 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
     reader.readAsText(file);
   };
 
-  const handleImport = async () => {
+  const runImport = async (dryRun: boolean) => {
     if (!selectedPaperId) {
       setStatus({ message: "Please select a target paper.", isError: true });
       return;
@@ -137,13 +144,24 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
     setStatus(null);
 
     try {
-      const res = await bulkImportQuestionsAction(selectedPaperId, rawData, format);
-      if (res.success) {
+      const res = await bulkImportQuestionsAction(selectedPaperId, rawData, format, { mode, dryRun });
+      if (dryRun) {
+        setPreview({ key: inputKey, result: res });
+        setStatus(
+          res.success
+            ? { message: `Checked ${res.count} questions. Review the preview below, then confirm.`, isError: false }
+            : { message: res.error ?? "Validation failed.", isError: true }
+        );
+      } else if (res.success) {
+        setPreview(null);
         setStatus({
-          message: `Successfully imported ${res.count} questions into the paper!`,
+          message: `Imported into "${selectedPaper?.title ?? "paper"}": ${res.created} added, ${res.updated} replaced, ${res.deleted} removed.`,
           isError: false,
         });
         router.refresh();
+      } else {
+        setPreview({ key: inputKey, result: res });
+        setStatus({ message: res.error ?? "Import failed.", isError: true });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to import questions";
@@ -215,6 +233,35 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
         </div>
       </div>
 
+      <div>
+        <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">Import Mode</label>
+        <div className="flex gap-2">
+          {(
+            [
+              ["append", "Add to paper", "Adds new questions. Blocked if a question number or question already exists in the paper."],
+              ["replace", "Replace paper's questions", "Makes the paper match this file exactly: same-numbered questions are overwritten, missing ones are deleted."],
+            ] as const
+          ).map(([value, label, help]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value)}
+              className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border text-left transition-colors ${
+                mode === value ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {label}
+              <span className={`block font-normal mt-0.5 ${mode === value ? "text-gray-300" : "text-gray-500"}`}>{help}</span>
+            </button>
+          ))}
+        </div>
+        {mode === "replace" && (
+          <p className="mt-2 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            Questions in &quot;{selectedPaper?.title}&quot; that are not in this file will be deleted, along with any student answers to them.
+          </p>
+        )}
+      </div>
+
       {/* Instant Diagram / Image Uploader for Questions */}
       <DiagramUploader
         label="Question Diagram / Image Converter"
@@ -266,18 +313,108 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
         </div>
       )}
 
-      <div className="flex justify-between items-center pt-2">
+      {preview && <ImportPreview result={preview.result} stale={!previewIsCurrent} />}
+
+      <div className="flex flex-wrap justify-between items-center gap-3 pt-2">
         <p className="text-xs text-gray-500">
           Supports LaTeX formulas (<code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700">$...$</code>), Markdown tables, options, and step-by-step explanations.
         </p>
-        <button
-          onClick={handleImport}
-          disabled={loading}
-          className="bg-gray-900 text-white font-bold text-sm px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-50"
-        >
-          {loading ? "Validating & Ingesting..." : "Validate & Import Questions"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => runImport(true)}
+            disabled={loading}
+            className="bg-white text-gray-900 border border-gray-300 font-bold text-sm px-5 py-3 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            {loading ? "Checking..." : "1. Check & Preview"}
+          </button>
+          <button
+            onClick={() => runImport(false)}
+            disabled={loading || !previewIsCurrent || !preview?.result.success}
+            title={!previewIsCurrent ? "Run Check & Preview on the current input first" : undefined}
+            className="bg-gray-900 text-white font-bold text-sm px-5 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-40"
+          >
+            {loading ? "Working..." : `2. Import ${previewIsCurrent && preview ? preview.result.count : ""} Questions`}
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function ImportPreview({ result, stale }: { result: ImportResult; stale: boolean }) {
+  const issues = [
+    ...result.issues.filter((i) => i.level === "error"),
+    ...result.issues.filter((i) => i.level === "warning"),
+  ];
+  return (
+    <div className={`space-y-4 ${stale ? "opacity-50" : ""}`}>
+      {stale && (
+        <p className="text-xs font-semibold text-amber-800">The input changed since this check. Run Check &amp; Preview again.</p>
+      )}
+      {result.success && (
+        <div className="grid grid-cols-3 gap-3 text-center">
+          {(
+            [
+              ["Will add", result.created],
+              ["Will replace", result.updated],
+              ["Will delete", result.deleted],
+            ] as const
+          ).map(([label, n]) => (
+            <div key={label} className="border border-gray-200 rounded-xl p-3">
+              <div className="text-2xl font-black text-gray-900">{n}</div>
+              <div className="text-xs font-semibold text-gray-500">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {issues.length > 0 && (
+        <div className="border border-gray-200 rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100">
+          {issues.map((issue, i) => (
+            <div key={i} className="px-3 py-2 text-xs flex gap-2">
+              <span className={`font-black shrink-0 ${issue.level === "error" ? "text-rose-700" : "text-amber-700"}`}>
+                {issue.level === "error" ? "ERROR" : "WARN"}
+              </span>
+              <span className="font-bold text-gray-700 shrink-0">
+                {issue.questionNumber !== null ? `Q${issue.questionNumber}` : "Paper"}
+              </span>
+              <span className="text-gray-700">{issue.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {result.preview.length > 0 && (
+        <details className="border border-gray-200 rounded-xl">
+          <summary className="px-3 py-2 text-xs font-bold text-gray-700 cursor-pointer">
+            Preview parsed questions ({result.preview.length})
+          </summary>
+          <div className="max-h-[28rem] overflow-y-auto divide-y divide-gray-100">
+            {result.preview.map((q, i) => (
+              <div key={i} className="p-3 text-xs space-y-1.5">
+                <div className="font-bold text-gray-900">
+                  Q{q.questionNumber}
+                  {q.section && <span className="ml-2 font-normal text-gray-500">{q.section}</span>}
+                </div>
+                <p className="whitespace-pre-wrap text-gray-800">{q.questionText}</p>
+                <ul className="grid sm:grid-cols-2 gap-1">
+                  {(["A", "B", "C", "D"] as const).map((k) => (
+                    <li
+                      key={k}
+                      className={`whitespace-pre-wrap rounded px-2 py-1 border ${
+                        q.correctAnswer === k
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-900 font-semibold"
+                          : "border-gray-200 text-gray-700"
+                      }`}
+                    >
+                      <span className="font-black mr-1">{k}.</span>
+                      {q.options[k] || <em className="text-rose-600">empty</em>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

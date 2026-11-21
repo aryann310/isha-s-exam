@@ -4,7 +4,17 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { parseMarkdownQuestions, parseQuestionOptions } from "@/lib/parse-markdown-questions";
+import { parseQuestionOptions, questionFingerprint } from "@/lib/parse-markdown-questions";
+import {
+  ImportInputError,
+  normalizeImport,
+  toPreview,
+  validateQuestions,
+  type ImportFormat,
+  type ImportMode,
+  type ImportResult,
+  type NormalizedQuestion,
+} from "@/lib/question-import";
 
 function safeRevalidate(path: string) {
   try {
@@ -299,6 +309,23 @@ export async function deletePaperAction(paperId: string) {
 }
 
 // Questions
+
+/** Returns an error message, or null when the number and answer are usable. */
+async function checkQuestionInput(
+  paperId: string,
+  questionNumber: number,
+  correctAnswer: string,
+  excludeId: string | null
+): Promise<string | null> {
+  if (!Number.isInteger(questionNumber) || questionNumber < 1) return "Question number must be a positive whole number.";
+  if (!["A", "B", "C", "D"].includes(correctAnswer)) return "Correct answer must be A, B, C or D.";
+  const clash = await prisma.question.findFirst({
+    where: { paperId, questionNumber, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
+    select: { id: true },
+  });
+  return clash ? `This paper already has a question #${questionNumber}. Pick a different number.` : null;
+}
+
 export async function createQuestionAction(formData: FormData) {
   await requireAdmin();
 
@@ -322,6 +349,9 @@ export async function createQuestionAction(formData: FormData) {
     C: optionC,
     D: optionD,
   };
+
+  const invalid = await checkQuestionInput(paperId, questionNumber, correctAnswer, null);
+  if (invalid) return { success: false, error: invalid };
 
   await prisma.question.create({
     data: {
@@ -368,6 +398,9 @@ export async function updateQuestionAction(formData: FormData) {
   const optionD = formData.get("optionD") as string;
 
   const existing = await prisma.question.findUnique({ where: { id } });
+  if (!existing) return { success: false, error: "Question not found." };
+  const invalid = await checkQuestionInput(existing.paperId, questionNumber, correctAnswer, id);
+  if (invalid) return { success: false, error: invalid };
   const existingOpts = existing ? parseQuestionOptions(existing.options) : { A: "", B: "", C: "", D: "" };
 
   const hasNewOptions = [optionA, optionB, optionC, optionD].some(
@@ -432,193 +465,166 @@ export async function deleteQuestionAction(questionId: string) {
   return { success: true };
 }
 
-// Bulk Question Import (JSON and CSV formats supported)
+// Bulk Question Import (Markdown, JSON, CSV).
+// Defaults to a dry run: nothing is written until the admin confirms the preview.
 export async function bulkImportQuestionsAction(
   paperId: string,
   rawData: string,
-  format: "json" | "csv" | "markdown"
-) {
+  format: ImportFormat,
+  opts: { mode?: ImportMode; dryRun?: boolean } = {}
+): Promise<ImportResult> {
   await requireAdmin();
 
-  let importedCount = 0;
+  const mode: ImportMode = opts.mode === "replace" ? "replace" : "append";
+  const dryRun = opts.dryRun !== false;
+  const result: ImportResult = { success: false, dryRun, count: 0, created: 0, updated: 0, deleted: 0, issues: [], preview: [] };
 
-  if (format === "markdown") {
-    const questionsList = parseMarkdownQuestions(rawData);
-    if (questionsList.length === 0) {
-      throw new Error("No valid questions found in the Markdown content. Ensure questions follow the template.");
-    }
+  const paper = await prisma.paper.findUnique({ where: { id: paperId }, select: { id: true, title: true } });
+  if (!paper) return { ...result, error: "Target paper not found." };
 
-    for (const q of questionsList) {
-      await prisma.question.create({
-        data: {
-          paperId,
+  let questions: NormalizedQuestion[];
+  try {
+    questions = normalizeImport(rawData, format);
+  } catch (err) {
+    if (err instanceof ImportInputError) return { ...result, error: err.message };
+    throw err;
+  }
+  if (questions.length === 0) {
+    return { ...result, error: "No questions found. Check that the content follows the template." };
+  }
+
+  result.count = questions.length;
+  result.preview = questions.map(toPreview);
+  result.issues = validateQuestions(questions);
+
+  const existing = await prisma.question.findMany({
+    where: { paperId },
+    select: { id: true, questionNumber: true, questionText: true, correctAnswer: true },
+    orderBy: [{ questionNumber: "asc" }, { id: "asc" }],
+  });
+
+  if (mode === "append") {
+    const existingNumbers = new Set(existing.map((q) => q.questionNumber));
+    const existingStems = new Map(existing.map((q) => [questionFingerprint(q.questionText), q.questionNumber]));
+    for (const q of questions) {
+      if (existingNumbers.has(q.questionNumber)) {
+        result.issues.push({
           questionNumber: q.questionNumber,
-          questionText: q.questionText,
-          options: JSON.stringify(q.options),
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation,
-          section: q.section,
-          topic: q.topic,
-          difficulty: q.difficulty,
-        },
-      });
-      importedCount++;
-    }
-  } else if (format === "json") {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawData);
-    } catch {
-      throw new Error("Invalid JSON format");
-    }
-
-    interface QuestionImportItem {
-      questionNumber?: number;
-      question_number?: number;
-      questionText?: string;
-      question?: string;
-      options?: Record<string, unknown> | unknown[] | string;
-      optionA?: string;
-      option_a?: string;
-      a?: string;
-      optionB?: string;
-      option_b?: string;
-      b?: string;
-      optionC?: string;
-      option_c?: string;
-      c?: string;
-      optionD?: string;
-      option_d?: string;
-      d?: string;
-      correctAnswer?: string;
-      correct_answer?: string;
-      explanation?: string;
-      section?: string | null;
-      topic?: string | null;
-      difficulty?: string;
-    }
-
-    const questionsList: QuestionImportItem[] | null = Array.isArray(parsed)
-      ? (parsed as QuestionImportItem[])
-      : parsed && typeof parsed === "object" && "questions" in parsed && Array.isArray((parsed as { questions: unknown }).questions)
-      ? ((parsed as { questions: unknown }).questions as QuestionImportItem[])
-      : null;
-
-    if (!questionsList) {
-      throw new Error("Expected an array of questions or an object with a 'questions' array.");
-    }
-
-    for (let i = 0; i < questionsList.length; i++) {
-      const q = questionsList[i];
-      const qNum = q.questionNumber || q.question_number || (i + 1);
-      const text = q.questionText || q.question || "";
-      const optionsObj = parseQuestionOptions(q.options ?? {
-        A: q.optionA ?? q.option_a ?? q.a ?? "",
-        B: q.optionB ?? q.option_b ?? q.b ?? "",
-        C: q.optionC ?? q.option_c ?? q.c ?? "",
-        D: q.optionD ?? q.option_d ?? q.d ?? "",
-      });
-      const opts = JSON.stringify(optionsObj);
-      const correct = q.correctAnswer || q.correct_answer || "A";
-      const explanation = q.explanation || "";
-      const section = q.section || null;
-      const topic = q.topic || null;
-      const difficulty = q.difficulty || "Medium";
-
-      await prisma.question.create({
-        data: {
-          paperId,
-          questionNumber: qNum,
-          questionText: text,
-          options: opts,
-          correctAnswer: correct,
-          explanation,
-          section,
-          topic,
-          difficulty,
-        },
-      });
-      importedCount++;
-    }
-  } else if (format === "csv") {
-    // Parse CSV lines
-    const lines = rawData.split(/\r?\n/).filter(line => line.trim().length > 0);
-    if (lines.length <= 1) throw new Error("CSV has no data rows");
-
-    const parseCsvLine = (line: string): string[] => {
-      const result: string[] = [];
-      let current = "";
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"' && (i === 0 || line[i - 1] !== '\\')) {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          result.push(current.trim());
-          current = "";
-        } else {
-          current += char;
-        }
+          level: "error",
+          message: `"${paper.title}" already has a question ${q.questionNumber}. Use Replace mode to overwrite the paper, or renumber.`,
+        });
       }
-      result.push(current.trim());
-      return result;
-    };
-
-    const header = parseCsvLine(lines[0]).map(h => h.toLowerCase());
-    for (let i = 1; i < lines.length; i++) {
-      const cols = parseCsvLine(lines[i]);
-      if (cols.length < 5) continue;
-
-      const getCol = (name: string, fallbackIndex: number) => {
-        const idx = header.indexOf(name);
-        return idx !== -1 ? cols[idx] : cols[fallbackIndex] || "";
-      };
-
-      const qNum = parseInt(getCol("question_number", 0), 10) || i;
-      const section = getCol("section", 1) || null;
-      const topic = getCol("topic", 2) || null;
-      const questionText = getCol("question", 3);
-      const optionA = getCol("option_a", 4);
-      const optionB = getCol("option_b", 5);
-      const optionC = getCol("option_c", 6);
-      const optionD = getCol("option_d", 7);
-      const correctAnswer = getCol("correct_answer", 8) || "A";
-      const explanation = getCol("explanation", 9) || "";
-      const difficulty = getCol("difficulty", 10) || "Medium";
-
-      const optionsObj = {
-        A: optionA,
-        B: optionB,
-        C: optionC,
-        D: optionD,
-      };
-
-      await prisma.question.create({
-        data: {
-          paperId,
-          questionNumber: qNum,
-          questionText,
-          options: JSON.stringify(optionsObj),
-          correctAnswer,
-          explanation,
-          section,
-          topic,
-          difficulty,
-        },
-      });
-      importedCount++;
+      const stem = questionFingerprint(q.questionText);
+      const dupOf = stem.length >= 25 ? existingStems.get(stem) : undefined;
+      if (dupOf !== undefined) {
+        result.issues.push({
+          questionNumber: q.questionNumber,
+          level: "error",
+          message: `The same question already exists in "${paper.title}" as Q${dupOf}`,
+        });
+      }
     }
   }
 
-  // Update total questions count in paper
-  const count = await prisma.question.count({ where: { paperId } });
-  await prisma.paper.update({
-    where: { id: paperId },
-    data: { totalQuestions: count },
+  // Catch "imported into the wrong paper": most of the questions already live in another paper.
+  const stems = new Set(questions.map((q) => questionFingerprint(q.questionText)).filter((s) => s.length >= 25));
+  if (stems.size >= 5) {
+    const others = await prisma.question.findMany({
+      where: { paperId: { not: paperId } },
+      select: { questionText: true, paper: { select: { title: true } } },
+    });
+    const hits = new Map<string, number>();
+    for (const o of others) {
+      if (stems.has(questionFingerprint(o.questionText))) hits.set(o.paper.title, (hits.get(o.paper.title) ?? 0) + 1);
+    }
+    for (const [title, n] of hits) {
+      if (n >= stems.size / 2) {
+        result.issues.push({
+          questionNumber: null,
+          level: "warning",
+          message: `${n} of these ${stems.size} questions already exist in paper "${title}". Make sure "${paper.title}" is the paper you meant.`,
+        });
+      }
+    }
+  }
+
+  if (result.issues.some((i) => i.level === "error")) {
+    return { ...result, error: "Nothing was imported. Fix the errors listed below and try again." };
+  }
+
+  // Plan the write.
+  const incomingNumbers = new Set(questions.map((q) => q.questionNumber));
+  const byNumber = new Map<number, typeof existing>();
+  for (const e of existing) byNumber.set(e.questionNumber, [...(byNumber.get(e.questionNumber) ?? []), e]);
+
+  const toCreate: NormalizedQuestion[] = [];
+  const toUpdate: Array<{ id: string; q: NormalizedQuestion; answerChanged: boolean }> = [];
+  const toDelete: string[] = [];
+
+  if (mode === "append") {
+    toCreate.push(...questions);
+  } else {
+    for (const q of questions) {
+      const matches = byNumber.get(q.questionNumber) ?? [];
+      if (matches.length === 0) {
+        toCreate.push(q);
+      } else {
+        // Reuse the existing row so students' saved answers stay attached to it.
+        toUpdate.push({ id: matches[0].id, q, answerChanged: matches[0].correctAnswer !== q.correctAnswer });
+        toDelete.push(...matches.slice(1).map((m) => m.id));
+      }
+    }
+    for (const e of existing) {
+      if (!incomingNumbers.has(e.questionNumber)) toDelete.push(e.id);
+    }
+  }
+
+  result.created = toCreate.length;
+  result.updated = toUpdate.length;
+  result.deleted = toDelete.length;
+
+  if (dryRun) return { ...result, success: true };
+
+  const toData = (q: NormalizedQuestion) => ({
+    questionNumber: q.questionNumber,
+    questionText: q.questionText,
+    options: JSON.stringify(q.options),
+    correctAnswer: q.correctAnswer,
+    explanation: q.explanation || null,
+    section: q.section,
+    topic: q.topic,
+    difficulty: q.difficulty,
   });
 
+  // All or nothing: a failure part-way leaves the paper exactly as it was.
+  await prisma.$transaction(
+    async (tx) => {
+      if (toDelete.length) {
+        await tx.attemptAnswer.deleteMany({ where: { questionId: { in: toDelete } } });
+        await tx.question.deleteMany({ where: { id: { in: toDelete } } });
+      }
+      for (const { id, q, answerChanged } of toUpdate) {
+        await tx.question.update({ where: { id }, data: toData(q) });
+        if (answerChanged) {
+          // Keep saved answers' correctness in line with the new answer key.
+          await tx.attemptAnswer.updateMany({ where: { questionId: id, selectedAnswer: q.correctAnswer }, data: { isCorrect: true } });
+          await tx.attemptAnswer.updateMany({ where: { questionId: id, NOT: { selectedAnswer: q.correctAnswer } }, data: { isCorrect: false } });
+        }
+      }
+      if (toCreate.length) {
+        await tx.question.createMany({ data: toCreate.map((q) => ({ paperId, ...toData(q) })) });
+      }
+      const total = await tx.question.count({ where: { paperId } });
+      await tx.paper.update({ where: { id: paperId }, data: { totalQuestions: total } });
+    },
+    { maxWait: 15_000, timeout: 120_000 }
+  );
+
   safeRevalidate("/admin");
-  return { success: true, count: importedCount };
+  safeRevalidate("/admin/questions");
+  safeRevalidate("/admin/papers");
+  safeRevalidate(`/papers/${paperId}`);
+  return { ...result, success: true };
 }
 
 // User Management
@@ -836,7 +842,7 @@ export async function adminGetLiveAttemptDetailsAction(attemptId: string) {
       paper: {
         include: {
           exam: true,
-          questions: { orderBy: { questionNumber: "asc" } },
+          questions: { orderBy: [{ questionNumber: "asc" }, { id: "asc" }] },
         },
       },
       answers: true,

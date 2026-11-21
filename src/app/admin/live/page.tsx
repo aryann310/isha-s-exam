@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LiveProctorHub } from "@/components/admin/live-proctor-hub";
+import { LiveProctorHub, AttemptItem } from "@/components/admin/live-proctor-hub";
 
 export const dynamic = "force-dynamic";
 
@@ -122,9 +122,9 @@ export default async function AdminLiveProctorPage() {
         </div>
 
         <LiveProctorHub
-          initialAttempts={attempts as any}
+          initialAttempts={attempts as unknown as AttemptItem[]}
           students={students}
-          papers={papers as any}
+          papers={papers}
         />
       </main>
     </div>

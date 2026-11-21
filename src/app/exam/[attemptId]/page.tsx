@@ -35,7 +35,7 @@ export default async function ExamPage({
   // Fetch questions
   const rawQuestions = await prisma.question.findMany({
     where: { paperId: attempt.paperId },
-    orderBy: { questionNumber: "asc" },
+    orderBy: [{ questionNumber: "asc" }, { id: "asc" }],
   });
 
   // ponytail: Don't leak correct answers to the client for unattempted questions
@@ -52,7 +52,7 @@ export default async function ExamPage({
     <ExamEngine 
       attempt={attempt} 
       paper={attempt.paper} 
-      questions={questions as any} 
+      questions={questions as unknown as import("@prisma/client").Question[]} 
       initialAnswers={attempt.answers}
     />
   );

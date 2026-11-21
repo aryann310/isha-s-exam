@@ -91,10 +91,18 @@ export function LiveProctorHub({
   const [customDuration, setCustomDuration] = useState<number>(60);
 
   // Live Inspector Modal
+  type LiveAttemptDetail = Awaited<ReturnType<typeof adminGetLiveAttemptDetailsAction>>;
   const [inspectingAttemptId, setInspectingAttemptId] = useState<string | null>(null);
-  const [inspectData, setInspectData] = useState<any | null>(null);
+  const [inspectData, setInspectData] = useState<LiveAttemptDetail | null>(null);
   const [inspectingLoading, setInspectingLoading] = useState(false);
   const [inspectQuestionIndex, setInspectQuestionIndex] = useState(0);
+
+  // Live countdown state (purity compliant)
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Auto-refresh interval (5s)
   useEffect(() => {
@@ -115,8 +123,8 @@ export function LiveProctorHub({
     try {
       const data = await adminGetLiveAttemptDetailsAction(attemptId);
       setInspectData(data);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load attempt details");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load attempt details");
     } finally {
       setInspectingLoading(false);
     }
@@ -137,8 +145,8 @@ export function LiveProctorHub({
           setInspectingAttemptId(null);
         }
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to close exam");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to close exam");
       }
     });
   };
@@ -156,8 +164,8 @@ export function LiveProctorHub({
           setInspectData(updated);
         }
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to extend time");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to extend time");
       }
     });
   };
@@ -177,8 +185,8 @@ export function LiveProctorHub({
           setInspectingAttemptId(null);
         }
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to reset attempt");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to reset attempt");
       }
     });
   };
@@ -196,8 +204,8 @@ export function LiveProctorHub({
           setInspectingAttemptId(null);
         }
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to delete attempt");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to delete attempt");
       }
     });
   };
@@ -209,7 +217,7 @@ export function LiveProctorHub({
     setSuccess(null);
     startTransition(async () => {
       try {
-        const res = await adminStartExamForStudentAction(
+        await adminStartExamForStudentAction(
           selectedStudentId,
           selectedPaperId,
           selectedMode,
@@ -220,8 +228,8 @@ export function LiveProctorHub({
         setSuccess(`Launched ${selectedMode} exam "${pap?.title}" for ${stu?.name}. They can now take it!`);
         setShowStartModal(false);
         router.refresh();
-      } catch (err: any) {
-        setError(err?.message || "Failed to start exam");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to start exam");
       }
     });
   };
@@ -229,7 +237,7 @@ export function LiveProctorHub({
   // Format countdown / duration
   const getRemainingTimeStr = (endsAt: string | Date | null) => {
     if (!endsAt) return "No limit (Practice)";
-    const remainingSec = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000));
+    const remainingSec = Math.max(0, Math.floor((new Date(endsAt).getTime() - now) / 1000));
     if (remainingSec === 0) return "Time expired (Pending submit)";
     const m = Math.floor(remainingSec / 60);
     const s = remainingSec % 60;
@@ -443,6 +451,7 @@ export function LiveProctorHub({
                       <span className="text-xs font-semibold text-gray-600">
                         {answeredCount} of {att.paper?.totalQuestions || 0} Qs Answered ({progressPct}%)
                       </span>
+                      <span className="text-xs text-gray-500 font-medium">({correctSoFar}✓ / {incorrectSoFar}✗)</span>
                       {isLive ? (
                         <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-mono">
                           ⏱ {getRemainingTimeStr(att.endsAt)}
@@ -614,7 +623,7 @@ export function LiveProctorHub({
                   <label className="block text-gray-700 mb-1">Mode</label>
                   <select
                     value={selectedMode}
-                    onChange={(e) => setSelectedMode(e.target.value as any)}
+                    onChange={(e) => setSelectedMode(e.target.value as "MOCK" | "PRACTICE")}
                     className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-gray-950 outline-none"
                   >
                     <option value="MOCK">MOCK TEST (Timed Simulation)</option>
@@ -730,14 +739,14 @@ export function LiveProctorHub({
                   <div>
                     <span className="text-[10px] uppercase font-bold text-gray-400 block">Answered</span>
                     <span className="text-xs font-bold text-gray-900">
-                      {inspectData.answers.filter((a: any) => a.selectedAnswer).length} of{" "}
+                      {inspectData.answers.filter((a) => a.selectedAnswer).length} of{" "}
                       {inspectData.paper.questions.length} Qs
                     </span>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-gray-400 block">Correct So Far</span>
                     <span className="text-xs font-bold text-emerald-600">
-                      {inspectData.answers.filter((a: any) => a.isCorrect === true).length} Correct
+                      {inspectData.answers.filter((a) => a.isCorrect === true).length} Correct
                     </span>
                   </div>
                 </div>
@@ -760,8 +769,8 @@ export function LiveProctorHub({
                   </div>
 
                   <div className="flex flex-wrap gap-1.5 p-3 bg-gray-50 rounded-2xl border border-gray-200">
-                    {inspectData.paper.questions.map((q: any, idx: number) => {
-                      const ans = inspectData.answers.find((a: any) => a.questionId === q.id);
+                    {inspectData.paper.questions.map((q, idx: number) => {
+                      const ans = inspectData.answers.find((a) => a.questionId === q.id);
                       let btnColor = "bg-white border-gray-200 text-gray-600 hover:border-gray-400";
                       if (ans?.selectedAnswer) {
                         btnColor = ans.isCorrect
@@ -789,7 +798,7 @@ export function LiveProctorHub({
                 {/* Current Question Detail View */}
                 {inspectData.paper.questions[inspectQuestionIndex] && (() => {
                   const q = inspectData.paper.questions[inspectQuestionIndex];
-                  const ans = inspectData.answers.find((a: any) => a.questionId === q.id);
+                  const ans = inspectData.answers.find((a) => a.questionId === q.id);
                   const opts = parseQuestionOptions(q.options);
 
                   return (
