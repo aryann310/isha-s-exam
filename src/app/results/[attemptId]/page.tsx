@@ -2,6 +2,8 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { isAnswerCorrect, isAnswered, marksFor, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
+import { loadAttemptContext } from "@/server/attempts";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,9 @@ export default async function ResultPage({
 
   const resolvedParams = await params;
   const isAdmin = session.role === "ADMIN";
+
+  // Closes the attempt first if its time ran out while the candidate was away.
+  await loadAttemptContext(resolvedParams.attemptId, session);
 
   const attempt = await prisma.attempt.findFirst({
     where: isAdmin
@@ -42,30 +47,38 @@ export default async function ResultPage({
   // Section-wise analysis
   const sectionStats: Record<
     string,
-    { total: number; correct: number; incorrect: number; unattempted: number }
+    { total: number; correct: number; incorrect: number; unattempted: number; score: number }
   > = {};
+  // Sections in exam order, so the table reads like the paper.
+  for (const s of resolvePaperSections(attempt.paper, attempt.paper.questions)) {
+    sectionStats[s.name] = { total: 0, correct: 0, incorrect: 0, unattempted: 0, score: 0 };
+  }
 
   // ponytail: O(N) map instead of O(N^2) find
   const ansByQ = Object.fromEntries(attempt.answers.map(a => [a.questionId, a]));
 
   attempt.paper.questions.forEach((q) => {
-    const sec = q.section || "General";
+    const sec = sectionKey(q.section);
     if (!sectionStats[sec]) {
-      sectionStats[sec] = { total: 0, correct: 0, incorrect: 0, unattempted: 0 };
+      sectionStats[sec] = { total: 0, correct: 0, incorrect: 0, unattempted: 0, score: 0 };
     }
     sectionStats[sec].total++;
 
     const ans = ansByQ[q.id];
-    if (!ans || !ans.selectedAnswer) {
+    const marks = marksFor(attempt.paper, q.questionType);
+    if (!ans || !isAnswered(ans.selectedAnswer)) {
       sectionStats[sec].unattempted++;
-    } else if (ans.isCorrect) {
+      sectionStats[sec].score += attempt.paper.unattemptedMarks;
+    } else if (isAnswerCorrect(q.questionType, q.correctAnswer, ans.selectedAnswer)) {
       sectionStats[sec].correct++;
+      sectionStats[sec].score += marks.correct;
     } else {
       sectionStats[sec].incorrect++;
+      sectionStats[sec].score += marks.incorrect;
     }
   });
 
-  const sectionsList = Object.entries(sectionStats);
+  const sectionsList = Object.entries(sectionStats).filter(([, stat]) => stat.total > 0);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -167,8 +180,13 @@ export default async function ResultPage({
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-gray-900 text-sm">{secName}</span>
-                        <span className="text-xs font-black bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                          {secAcc}% Acc
+                        <span className="flex gap-1.5 shrink-0">
+                          <span className="text-xs font-black bg-gray-900 text-white px-2 py-0.5 rounded">
+                            {Math.round(stat.score * 100) / 100} marks
+                          </span>
+                          <span className="text-xs font-black bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            {secAcc}% Acc
+                          </span>
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-xs text-gray-600">

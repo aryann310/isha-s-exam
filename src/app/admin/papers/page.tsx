@@ -22,6 +22,7 @@ export default async function AdminPapersPage({
       include: {
         exam: true,
         _count: { select: { questions: true, attempts: true } },
+        questions: { select: { section: true, questionNumber: true }, orderBy: { questionNumber: "asc" } },
       },
       orderBy: { createdAt: "desc" },
     }),

@@ -44,6 +44,13 @@ model Paper {
   correctMarks        Float      @default(4.0)
   incorrectMarks      Float      @default(-1.0)
   unattemptedMarks    Float      @default(0.0)
+  // Exam pattern preset: CAT | CMAT | NMAT | SNAP | CUSTOM (rules live in src/lib/exam-patterns.ts)
+  examPattern         String     @default("CUSTOM")
+  // JSON [{ "name": "VARC", "durationSeconds": 2400 }] in exam order; null = derive from questions
+  sectionConfig       String?
+  // Marks for typed-answer (TITA) questions; null = same as correctMarks
+  titaCorrectMarks    Float?
+  titaIncorrectMarks  Float      @default(0.0)
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
@@ -60,6 +67,7 @@ model Question {
   section         String?
   topic           String?
   difficulty      String?        // Easy, Medium, Hard
+  questionType    String         @default("MCQ") // MCQ | TITA (type in the answer)
   options         String         // Stored as JSON string e.g. {"A":"...","B":"..."}
   correctAnswer   String
   explanation     String?
@@ -83,6 +91,11 @@ model Attempt {
   unattempted   Int?
   accuracy      Float?
   timeTaken     Int?      // In seconds
+  // Sectional exams (CAT, NMAT): order the candidate takes sections in, and where they are now
+  sectionOrder        String?   // JSON array of section names
+  currentSection      Int       @default(0)
+  sectionStartedAt    DateTime?
+  sectionExtraSeconds Int       @default(0) // admin time extension for the current section
   
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   paper         Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
@@ -95,6 +108,7 @@ model AttemptAnswer {
   questionId       String
   selectedAnswer   String?
   isCorrect        Boolean?
+  markedForReview  Boolean   @default(false)
   answeredAt       DateTime  @default(now())
 
   attempt          Attempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)

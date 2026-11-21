@@ -836,9 +836,22 @@ export function LiveProctorHub({
                         dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.questionText) }}
                       />
 
+                      {q.questionType === "TITA" && (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="p-3 rounded-xl border bg-gray-50 border-gray-200">
+                            <p className="font-bold text-gray-500 mb-1">Student typed</p>
+                            <p className="font-mono text-sm">{ans?.selectedAnswer || "—"}</p>
+                          </div>
+                          <div className="p-3 rounded-xl border bg-emerald-50 border-emerald-500">
+                            <p className="font-bold text-gray-500 mb-1">Correct answer</p>
+                            <p className="font-mono text-sm">{q.correctAnswer.split("|").join(" or ")}</p>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Options with Student selection highlighted */}
                       <div className="space-y-2">
-                        {Object.entries(opts).map(([key, val]) => {
+                        {q.questionType !== "TITA" && Object.entries(opts).map(([key, val]) => {
                           const isStudentPick = ans?.selectedAnswer === key;
                           const isCorrect = q.correctAnswer === key;
 

@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PatternSettings } from "@/components/admin/pattern-settings";
+import { getPattern, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
 import {
   createPaperAction,
   updatePaperAction,
@@ -29,6 +31,11 @@ interface PaperItem {
   unattemptedMarks: number;
   description: string | null;
   isActive: boolean;
+  examPattern: string;
+  sectionConfig: string | null;
+  titaCorrectMarks: number | null;
+  titaIncorrectMarks: number;
+  questions: Array<{ section: string | null; questionNumber: number }>;
   exam: { id: string; name: string; slug?: string };
   _count: { questions: number; attempts: number };
 }
@@ -253,6 +260,8 @@ export function PaperManager({
                 </div>
               </div>
 
+              <PatternSettings />
+
               <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
                 <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block">
                   Marking Scheme
@@ -398,6 +407,9 @@ export function PaperManager({
                       }`}
                     >
                       {paper.isActive ? "PUBLISHED" : "DRAFT / UNPUBLISHED"}
+                    </span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                      {getPattern(paper.examPattern).label} PATTERN
                     </span>
                   </div>
                   <p className="text-xs text-gray-500">
@@ -598,6 +610,19 @@ export function PaperManager({
                   className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
                 />
               </div>
+
+              <PatternSettings
+                key={editingPaper.id}
+                defaultPattern={editingPaper.examPattern}
+                defaultTitaCorrect={editingPaper.titaCorrectMarks}
+                defaultTitaIncorrect={editingPaper.titaIncorrectMarks}
+                durationMinutes={Math.round(editingPaper.durationSeconds / 60)}
+                questionSections={[...new Set(editingPaper.questions.map((q) => sectionKey(q.section)))]}
+                initialSections={resolvePaperSections(editingPaper, editingPaper.questions).map((s) => ({
+                  name: s.name,
+                  minutes: s.durationSeconds ? Math.round(s.durationSeconds / 60) : null,
+                }))}
+              />
 
               {/* Marking Schema Section */}
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">

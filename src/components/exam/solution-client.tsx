@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Question, AttemptAnswer } from "@prisma/client";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
+import { isAnswerCorrect } from "@/lib/exam-patterns";
 
 type FilterType = "ALL" | "CORRECT" | "INCORRECT" | "UNATTEMPTED";
 
@@ -18,7 +19,8 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
   const getQuestionStatus = (questionId: string) => {
     const ans = answers.find((a) => a.questionId === questionId);
     if (!ans || !ans.selectedAnswer) return "UNATTEMPTED";
-    return ans.isCorrect ? "CORRECT" : "INCORRECT";
+    const q = questions.find((x) => x.id === questionId);
+    return q && isAnswerCorrect(q.questionType, q.correctAnswer, ans.selectedAnswer) ? "CORRECT" : "INCORRECT";
   };
 
   const filteredQuestions = questions.filter((q) => {
@@ -79,8 +81,21 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
                     dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.questionText) }}
                   />
 
+                  {q.questionType === "TITA" && (
+                    <div className="grid sm:grid-cols-2 gap-3 mb-8 text-sm">
+                      <div className={`p-4 rounded-xl border-2 ${status === "CORRECT" ? "border-emerald-500 bg-emerald-50" : status === "INCORRECT" ? "border-rose-500 bg-rose-50" : "border-gray-200"}`}>
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Your answer</p>
+                        <p className="font-mono text-lg">{selectedAnswer || "—"}</p>
+                      </div>
+                      <div className="p-4 rounded-xl border-2 border-emerald-500 bg-emerald-50">
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Correct answer</p>
+                        <p className="font-mono text-lg">{q.correctAnswer.split("|").join(" or ")}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-3 mb-8">
-                    {Object.entries(optionsObj).map(([key, value]) => {
+                    {q.questionType !== "TITA" && Object.entries(optionsObj).map(([key, value]) => {
                       const isCorrect = q.correctAnswer === key;
                       const isSelected = selectedAnswer === key;
 

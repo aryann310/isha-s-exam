@@ -18,6 +18,7 @@ export interface ImportIssue {
 
 export interface ImportPreviewItem {
   questionNumber: number;
+  questionType: "MCQ" | "TITA";
   section: string | null;
   questionText: string;
   options: Record<OptionKey, string>;
@@ -39,6 +40,7 @@ export interface ImportResult {
 
 export interface NormalizedQuestion {
   questionNumber: number;
+  questionType: "MCQ" | "TITA";
   questionText: string;
   options: Record<OptionKey, string>;
   correctAnswer: string;
@@ -67,6 +69,20 @@ function normalizeCorrectAnswer(value: unknown): string {
     .replace(/^\(|\)$/g, "")
     .toUpperCase();
   return (OPTION_KEYS as string[]).includes(v) ? v : "";
+}
+
+function readType(value: unknown): "MCQ" | "TITA" {
+  return /tita|type in|typed|numeric|non[- ]?mcq/i.test(String(value ?? "")) ? "TITA" : "MCQ";
+}
+
+/** MCQ answers must be A-D; TITA answers are kept as typed. */
+function readAnswer(type: "MCQ" | "TITA", raw: unknown): { answer: string; problems: string[] } {
+  if (type === "TITA") {
+    const a = String(raw ?? "").trim();
+    return a ? { answer: a, problems: [] } : { answer: "", problems: ["Typed-answer (TITA) question has no correct answer"] };
+  }
+  const answer = normalizeCorrectAnswer(raw);
+  return { answer, problems: answer ? [] : [`Correct answer "${String(raw ?? "")}" is not one of A, B, C, D`] };
 }
 
 function positiveInt(value: unknown): number | null {
@@ -115,6 +131,7 @@ export function normalizeImport(rawData: string, format: ImportFormat): Normaliz
   if (format === "markdown") {
     return parseMarkdownQuestions(rawData).map((q) => ({
       questionNumber: q.questionNumber,
+      questionType: q.questionType,
       questionText: cleanText(q.questionText),
       options: q.options,
       correctAnswer: q.correctAnswer,
@@ -152,18 +169,22 @@ export function normalizeImport(rawData: string, format: ImportFormat): Normaliz
           D: q.optionD ?? q.option_d ?? q.d ?? "",
         }
       );
-      const correctRaw = q.correctAnswer ?? q.correct_answer ?? q.answer;
-      const correctAnswer = normalizeCorrectAnswer(correctRaw);
+      const questionType = readType(q.questionType ?? q.question_type ?? q.type);
+      const { answer, problems } = readAnswer(questionType, q.correctAnswer ?? q.correct_answer ?? q.answer);
       return {
         questionNumber: positiveInt(q.questionNumber ?? q.question_number) ?? i + 1,
+        questionType,
         questionText: cleanText(q.questionText ?? q.question),
-        options: { A: cleanText(opts.A), B: cleanText(opts.B), C: cleanText(opts.C), D: cleanText(opts.D) },
-        correctAnswer,
+        options:
+          questionType === "TITA"
+            ? { A: "", B: "", C: "", D: "" }
+            : { A: cleanText(opts.A), B: cleanText(opts.B), C: cleanText(opts.C), D: cleanText(opts.D) },
+        correctAnswer: answer,
         explanation: cleanText(q.explanation),
         section: cleanOptional(q.section),
         topic: cleanOptional(q.topic),
         difficulty: cleanText(q.difficulty) || "Medium",
-        problems: correctAnswer ? [] : [`Correct answer "${String(correctRaw ?? "")}" is not one of A, B, C, D`],
+        problems,
       };
     });
   }
@@ -176,10 +197,11 @@ export function normalizeImport(rawData: string, format: ImportFormat): Normaliz
     return (idx !== -1 ? row[idx] : row[fallbackIndex]) ?? "";
   };
   return rows.slice(1).map((row, i) => {
-    const correctRaw = col(row, "correct_answer", 8);
-    const correctAnswer = normalizeCorrectAnswer(correctRaw);
+    const questionType = header.includes("type") ? readType(col(row, "type", -1)) : "MCQ";
+    const { answer: correctAnswer, problems } = readAnswer(questionType, col(row, "correct_answer", 8));
     return {
       questionNumber: positiveInt(col(row, "question_number", 0)) ?? i + 1,
+      questionType,
       section: cleanOptional(col(row, "section", 1)),
       topic: cleanOptional(col(row, "topic", 2)),
       questionText: cleanText(col(row, "question", 3)),
@@ -192,7 +214,7 @@ export function normalizeImport(rawData: string, format: ImportFormat): Normaliz
       correctAnswer,
       explanation: cleanText(col(row, "explanation", 9)),
       difficulty: cleanText(col(row, "difficulty", 10)) || "Medium",
-      problems: correctAnswer ? [] : [`Correct answer "${correctRaw}" is not one of A, B, C, D`],
+      problems,
     };
   });
 }
@@ -220,8 +242,13 @@ export function validateQuestions(questions: NormalizedQuestion[]): ImportIssue[
     // Anything the reader could not resolve blocks the import: it would show students a broken question.
     q.problems.forEach(err);
     if (!q.questionText) err("Question text is empty");
-    for (const k of OPTION_KEYS) if (!q.options[k]) err(`Option ${k} is empty`);
-    if (!q.correctAnswer && q.problems.length === 0) err("Correct answer must be A, B, C or D");
+    if (q.questionType === "TITA") {
+      if (!q.correctAnswer) err("Typed-answer (TITA) question has no correct answer");
+      else if (q.correctAnswer.length > 60) err("Typed answer is too long (60 characters at most)");
+    } else {
+      for (const k of OPTION_KEYS) if (!q.options[k]) err(`Option ${k} is empty`);
+      if (!q.correctAnswer && q.problems.length === 0) err("Correct answer must be A, B, C or D");
+    }
 
     if (seenNumbers.has(n)) err(`Question number ${n} appears more than once in this import`);
     seenNumbers.add(n);
@@ -233,6 +260,7 @@ export function validateQuestions(questions: NormalizedQuestion[]): ImportIssue[
       else seenStems.set(stem, n);
     }
 
+    if (q.questionType === "TITA") continue;
     const values = OPTION_KEYS.map((k) => q.options[k].trim().toLowerCase()).filter(Boolean);
     if (new Set(values).size < values.length) warn("Two or more options have identical text");
     for (const k of OPTION_KEYS) {
@@ -246,6 +274,7 @@ export function validateQuestions(questions: NormalizedQuestion[]): ImportIssue[
 export function toPreview(q: NormalizedQuestion): ImportPreviewItem {
   return {
     questionNumber: q.questionNumber,
+    questionType: q.questionType,
     section: q.section,
     questionText: q.questionText.length > 220 ? `${q.questionText.slice(0, 220)}…` : q.questionText,
     options: q.options,
