@@ -210,6 +210,11 @@ export default async function AdminQuestionsPage({
                       dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.questionText) }}
                     />
 
+                    {q.questionType === "TITA" ? (
+                      <div className="p-2 rounded border text-xs bg-emerald-50 border-emerald-300 text-emerald-900 font-bold">
+                        Typed answer (TITA): <span className="font-mono">{q.correctAnswer.split("|").join(" or ")}</span>
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {Object.entries(opts).map(([key, val]) => (
                         <div
@@ -225,6 +230,7 @@ export default async function AdminQuestionsPage({
                         </div>
                       ))}
                     </div>
+                    )}
 
                     {q.explanation && (
                       <div className="text-xs bg-gray-50 p-2.5 rounded border border-gray-200 text-gray-600 prose max-w-none">
