@@ -2,99 +2,169 @@
 
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { SAVE_GRACE_SECONDS } from "@/lib/attempt-timing";
+import { isAnswerCorrect, isAnswered } from "@/lib/exam-patterns";
+import { finalizeAttempt, loadAttemptContext, questionInOpenSection } from "@/server/attempts";
 
-export async function saveAnswerAction(attemptId: string, questionId: string, selectedAnswer: string) {
+type Fail = { ok: false; error: string; finished?: boolean };
+
+async function requireSession() {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
-
-  const isAdmin = session.role === "ADMIN";
-  const attempt = await prisma.attempt.findFirst({
-    where: isAdmin ? { id: attemptId } : { id: attemptId, userId: session.userId as string },
-    include: { paper: true },
-  });
-
-  if (!attempt || attempt.status !== "IN_PROGRESS") {
-    throw new Error("Invalid attempt");
-  }
-
-  const question = await prisma.question.findUnique({
-    where: { id: questionId },
-    select: { correctAnswer: true, explanation: true },
-  });
-
-  const isCorrect = question ? question.correctAnswer === selectedAnswer : false;
-
-  await prisma.attemptAnswer.upsert({
-    where: {
-      attemptId_questionId: {
-        attemptId,
-        questionId,
-      },
-    },
-    update: { selectedAnswer, isCorrect, answeredAt: new Date() },
-    create: { attemptId, questionId, selectedAnswer, isCorrect },
-  });
-
-  if (question) {
-    return {
-      isCorrect,
-      correctAnswer: question.correctAnswer,
-      explanation: question.explanation,
-    };
-  }
-
-  return null;
+  return session;
 }
 
-export async function submitExamAction(attemptId: string) {
-  const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
+function cleanResponse(questionType: string, answer: string | null): string | null | undefined {
+  if (answer === null) return null;
+  const a = String(answer).trim();
+  if (!a) return null;
+  if (questionType === "TITA") return a.length <= 40 && /^[0-9a-zA-Z.\-/: ]+$/.test(a) ? a : undefined;
+  const k = a.toUpperCase();
+  return ["A", "B", "C", "D"].includes(k) ? k : undefined;
+}
 
-  const isAdmin = session.role === "ADMIN";
-  const attempt = await prisma.attempt.findFirst({
-    where: isAdmin ? { id: attemptId } : { id: attemptId, userId: session.userId as string },
-    include: { 
-      paper: true,
-      answers: true,
-    },
+// ---------------------------------------------------------------------------
+// Practice mode: answer is checked and the solution shown straight away.
+// ---------------------------------------------------------------------------
+
+export async function saveAnswerAction(attemptId: string, questionId: string, selectedAnswer: string) {
+  const session = await requireSession();
+  const ctx = await loadAttemptContext(attemptId, session);
+  if (!ctx || ctx.attempt.status !== "IN_PROGRESS") throw new Error("Invalid attempt");
+  if (ctx.attempt.mode !== "PRACTICE") throw new Error("Answers in a mock test are revealed only after submission");
+
+  const question = await prisma.question.findFirst({
+    where: { id: questionId, paperId: ctx.paper.id },
+    select: { correctAnswer: true, explanation: true, questionType: true },
+  });
+  if (!question) throw new Error("Question not found");
+
+  const answer = cleanResponse(question.questionType, selectedAnswer);
+  if (!answer) throw new Error("Invalid answer");
+  const isCorrect = isAnswerCorrect(question.questionType, question.correctAnswer, answer);
+
+  await prisma.attemptAnswer.upsert({
+    where: { attemptId_questionId: { attemptId, questionId } },
+    update: { selectedAnswer: answer, isCorrect, answeredAt: new Date() },
+    create: { attemptId, questionId, selectedAnswer: answer, isCorrect },
   });
 
-  if (!attempt || attempt.status !== "IN_PROGRESS") {
-    throw new Error("Invalid attempt");
+  return { isCorrect, correctAnswer: question.correctAnswer, explanation: question.explanation };
+}
+
+// ---------------------------------------------------------------------------
+// Mock mode: exam-style responses. Nothing about correctness is returned.
+// ---------------------------------------------------------------------------
+
+export interface ResponseState {
+  answer: string | null;
+  markedForReview: boolean;
+}
+
+/** Save & Next, Mark for Review & Next, and Clear Response all land here. */
+export async function saveResponseAction(
+  attemptId: string,
+  questionId: string,
+  response: ResponseState
+): Promise<{ ok: true } | Fail> {
+  const session = await requireSession();
+  const ctx = await loadAttemptContext(attemptId, session, { graceSeconds: SAVE_GRACE_SECONDS });
+  if (!ctx) return { ok: false, error: "Attempt not found" };
+  if (ctx.attempt.status !== "IN_PROGRESS") return { ok: false, error: "This test has ended.", finished: true };
+  if (ctx.attempt.mode !== "MOCK") return { ok: false, error: "Not a mock attempt" };
+
+  const question = await prisma.question.findFirst({
+    where: { id: questionId, paperId: ctx.paper.id },
+    select: { section: true, questionType: true, correctAnswer: true },
+  });
+  if (!question) return { ok: false, error: "Question not found" };
+  if (!questionInOpenSection(ctx, question.section)) return { ok: false, error: "This section is closed." };
+
+  const answer = cleanResponse(question.questionType, response.answer);
+  if (answer === undefined) return { ok: false, error: "That answer is not valid for this question." };
+  const markedForReview = !!response.markedForReview;
+  const isCorrect = isAnswered(answer) ? isAnswerCorrect(question.questionType, question.correctAnswer, answer) : null;
+
+  await prisma.attemptAnswer.upsert({
+    where: { attemptId_questionId: { attemptId, questionId } },
+    update: { selectedAnswer: answer, isCorrect, markedForReview, answeredAt: new Date() },
+    create: { attemptId, questionId, selectedAnswer: answer, isCorrect, markedForReview },
+  });
+  return { ok: true };
+}
+
+/** Records that a question was opened, so the palette shows it as "Not Answered" instead of "Not Visited". */
+export async function visitQuestionAction(attemptId: string, questionId: string): Promise<{ ok: boolean }> {
+  const session = await requireSession();
+  const ctx = await loadAttemptContext(attemptId, session);
+  if (!ctx || ctx.attempt.status !== "IN_PROGRESS") return { ok: false };
+  const question = await prisma.question.findFirst({ where: { id: questionId, paperId: ctx.paper.id }, select: { section: true } });
+  if (!question || !questionInOpenSection(ctx, question.section)) return { ok: false };
+  await prisma.attemptAnswer.createMany({ data: [{ attemptId, questionId, selectedAnswer: null }], skipDuplicates: true });
+  return { ok: true };
+}
+
+/**
+ * Closes the open section of a sectional mock and opens the next one (or ends the test after the last).
+ * Allowed early only when the pattern permits it; otherwise only once the section's time is up.
+ */
+export async function submitSectionAction(
+  attemptId: string,
+  fromSection: number
+): Promise<{ ok: true; finished: boolean } | Fail> {
+  const session = await requireSession();
+  const ctx = await loadAttemptContext(attemptId, session);
+  if (!ctx) return { ok: false, error: "Attempt not found" };
+  if (ctx.attempt.status !== "IN_PROGRESS") return { ok: true, finished: true };
+  if (!ctx.timing.sectional) return { ok: false, error: "This test has no timed sections." };
+  // The clock already moved the candidate past that section: nothing to do.
+  if (ctx.timing.currentSection !== fromSection) return { ok: true, finished: false };
+
+  // loadAttemptContext already moved on if the time was up; if we are still here, this is an early submit.
+  const timeUp = ctx.timing.sectionDeadline !== null && ctx.timing.sectionDeadline.getTime() - Date.now() <= SAVE_GRACE_SECONDS * 1000;
+  if (!ctx.pattern.canSubmitSectionEarly && !timeUp) {
+    return { ok: false, error: "You can move to the next section only when this section's time is over." };
   }
 
-  const { paper, answers } = attempt;
+  const next = ctx.timing.currentSection + 1;
+  if (next >= ctx.timing.order.length) {
+    await finalizeAttempt(attemptId, "SUBMITTED");
+    return { ok: true, finished: true };
+  }
 
-  // ponytail: shrink N+1 DB updates. isCorrect is already saved continuously.
-  let correctCount = 0;
-  let incorrectCount = 0;
-  let unattemptedCount = paper.totalQuestions;
+  const now = new Date();
+  let remaining = 0;
+  for (let i = next; i < ctx.timing.order.length; i++) {
+    remaining += (ctx.sections.find((s) => s.name === ctx.timing.order[i])?.durationSeconds ?? 0) * 1000;
+  }
+  // Guard against double clicks: only advance from the section we just looked at.
+  await prisma.attempt.updateMany({
+    where: { id: attemptId, status: "IN_PROGRESS", currentSection: ctx.attempt.currentSection },
+    data: { currentSection: next, sectionStartedAt: now, sectionExtraSeconds: 0, endsAt: new Date(now.getTime() + remaining) },
+  });
+  return { ok: true, finished: false };
+}
 
-  for (const ans of answers) {
-    if (ans.selectedAnswer) {
-      unattemptedCount--;
-      if (ans.isCorrect) correctCount++;
-      else incorrectCount++;
+/** Ends the whole test. Practice: any time. Mock: per the pattern's rules, or when time is up. */
+export async function submitExamAction(attemptId: string): Promise<{ ok: true } | Fail> {
+  const session = await requireSession();
+  const ctx = await loadAttemptContext(attemptId, session);
+  if (!ctx) return { ok: false, error: "Attempt not found" };
+  if (ctx.attempt.status !== "IN_PROGRESS") return { ok: true };
+
+  if (ctx.attempt.mode === "MOCK") {
+    if (ctx.timing.sectional) {
+      const onLast = ctx.timing.currentSection >= ctx.timing.order.length - 1;
+      const timeUp = !!ctx.timing.sectionDeadline && ctx.timing.sectionDeadline.getTime() - Date.now() <= SAVE_GRACE_SECONDS * 1000;
+      if (!onLast || (!ctx.pattern.canSubmitSectionEarly && !timeUp)) {
+        return { ok: false, error: "The test ends after the last section's time is over." };
+      }
+    } else if (!ctx.pattern.canSubmitEarly) {
+      const timeUp = !!ctx.timing.overallDeadline && ctx.timing.overallDeadline.getTime() - Date.now() <= SAVE_GRACE_SECONDS * 1000;
+      if (!timeUp) return { ok: false, error: "This test can only be submitted when the time is over." };
     }
   }
 
-  const score = (correctCount * paper.correctMarks) + (incorrectCount * paper.incorrectMarks) + (unattemptedCount * paper.unattemptedMarks);
-  const accuracy = (correctCount + incorrectCount) > 0 ? (correctCount / (correctCount + incorrectCount)) * 100 : 0;
-  const timeTaken = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
-
-  await prisma.attempt.update({
-    where: { id: attemptId },
-    data: {
-      status: "SUBMITTED", // Could be AUTO_SUBMITTED based on time
-      submittedAt: new Date(),
-      score,
-      correct: correctCount,
-      incorrect: incorrectCount,
-      unattempted: unattemptedCount,
-      accuracy,
-      timeTaken,
-    },
-  });
-
-  return { success: true };
+  await finalizeAttempt(attemptId, "SUBMITTED");
+  return { ok: true };
 }

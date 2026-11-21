@@ -20,6 +20,7 @@ interface QuestionEditorFormProps {
     options?: string | null;
     correctAnswer: string;
     explanation: string | null;
+    questionType?: string;
   } | null;
   nextQuestionNumber: number;
   initialOptions?: Record<string, string>;
@@ -62,6 +63,7 @@ export function QuestionEditorForm({
   const [options, setOptions] = useState<Record<string, string>>(() =>
     parseQuestionOptions(editingQuestion?.options || initialOptions)
   );
+  const [questionType, setQuestionType] = useState<"MCQ" | "TITA">(editingQuestion?.questionType === "TITA" ? "TITA" : "MCQ");
   const [correctAnswer, setCorrectAnswer] = useState<string>(editingQuestion?.correctAnswer || "A");
   const [explanation, setExplanation] = useState<string>(editingQuestion?.explanation || "");
 
@@ -177,7 +179,8 @@ export function QuestionEditorForm({
     formData.append("optionB", options.B || "");
     formData.append("optionC", options.C || "");
     formData.append("optionD", options.D || "");
-    formData.append("correctAnswer", correctAnswer);
+    formData.append("questionType", questionType);
+    formData.append("correctAnswer", correctAnswer.trim());
     formData.append("explanation", explanation);
 
     startTransition(async () => {
@@ -274,8 +277,14 @@ export function QuestionEditorForm({
             dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(getCompiledQuestionText()) }}
           />
 
+          {questionType === "TITA" && (
+            <div className="p-2.5 rounded-lg border text-xs bg-emerald-50 border-emerald-400 font-bold text-emerald-950">
+              Typed answer: <span className="font-mono">{correctAnswer || "(not set)"}</span>
+            </div>
+          )}
+
           <div className="space-y-2 pt-2">
-            {Object.entries(options).map(([key, val]) => (
+            {questionType !== "TITA" && Object.entries(options).map(([key, val]) => (
               <div
                 key={key}
                 className={`p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
@@ -434,8 +443,34 @@ export function QuestionEditorForm({
             )}
           </div>
 
+          {/* Question type */}
+          <div>
+            <label className="block text-gray-700 mb-1">Question Type</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  ["MCQ", "Multiple choice (A–D)"],
+                  ["TITA", "Typed answer (TITA)"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setQuestionType(value);
+                    if (value === "MCQ" && !["A", "B", "C", "D"].includes(correctAnswer)) setCorrectAnswer("A");
+                    if (value === "TITA" && ["A", "B", "C", "D"].includes(correctAnswer)) setCorrectAnswer("");
+                  }}
+                  className={`py-2 rounded-lg border text-xs font-bold ${questionType === value ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Options */}
-          <div className="space-y-2">
+          <div className={`space-y-2 ${questionType === "TITA" ? "hidden" : ""}`}>
             <label className="block text-gray-700">Answer Options</label>
             {(["A", "B", "C", "D"] as const).map((optKey) => (
               <div key={optKey} className="flex items-center gap-2">
@@ -444,13 +479,25 @@ export function QuestionEditorForm({
                   value={options[optKey] || ""}
                   onChange={(e) => setOptions((prev) => ({ ...prev, [optKey]: e.target.value }))}
                   placeholder={`Option ${optKey} text (supports math $...$)`}
-                  required
+                  required={questionType === "MCQ"}
                   className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
                 />
               </div>
             ))}
           </div>
 
+          {questionType === "TITA" ? (
+            <div>
+              <label className="block text-gray-700 mb-1">Correct Answer</label>
+              <input
+                value={correctAnswer}
+                onChange={(e) => setCorrectAnswer(e.target.value)}
+                placeholder="e.g. 42 (use | for alternatives, e.g. 0.5|1/2)"
+                required
+                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-sm font-mono focus:ring-2 focus:ring-gray-900 outline-none"
+              />
+            </div>
+          ) : (
           <div>
             <label className="block text-gray-700 mb-1">Correct Answer Key</label>
             <select
@@ -464,6 +511,7 @@ export function QuestionEditorForm({
               <option value="D">Option D</option>
             </select>
           </div>
+          )}
 
           <div>
             <label className="block text-gray-700 mb-1">Detailed Solution / Explanation</label>

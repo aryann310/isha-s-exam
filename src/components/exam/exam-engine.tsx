@@ -6,6 +6,7 @@ import type { Attempt, Paper, Question, AttemptAnswer } from "@prisma/client";
 import { saveAnswerAction, submitExamAction } from "@/server/actions/engine";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
+import { isAnswerCorrect } from "@/lib/exam-patterns";
 
 type OptionType = { [key: string]: string };
 
@@ -40,7 +41,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
         const q = questions.find((item) => item.id === ans.questionId);
         if (q) {
           acc[ans.questionId] = {
-            isCorrect: ans.selectedAnswer === q.correctAnswer,
+            isCorrect: isAnswerCorrect(q.questionType, q.correctAnswer, ans.selectedAnswer),
             correctAnswer: q.correctAnswer,
             explanation: q.explanation,
           };
@@ -263,9 +264,37 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
               dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(currentQuestion.questionText) }}
             />
 
+            {/* Typed answer (TITA) */}
+            {currentQuestion.questionType === "TITA" && (
+              <div className="max-w-sm space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Type your answer</label>
+                <input
+                  value={answers[currentQuestion.id] ?? ""}
+                  disabled={isConfirmed}
+                  inputMode="decimal"
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^0-9a-zA-Z.\-/: ]/g, "").slice(0, 20);
+                    setAnswers((prev) => ({ ...prev, [currentQuestion.id]: v }));
+                  }}
+                  className={`w-full border-2 rounded-xl px-4 py-3 font-mono text-lg ${
+                    isConfirmed
+                      ? results[currentQuestion.id]?.isCorrect
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-rose-500 bg-rose-50"
+                      : "border-gray-300 focus:border-blue-600 outline-none"
+                  }`}
+                />
+                {isConfirmed && !results[currentQuestion.id]?.isCorrect && (
+                  <p className="text-sm font-semibold text-emerald-800">
+                    Correct answer: {results[currentQuestion.id]?.correctAnswer.split("|")[0]}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Options */}
             <div className="space-y-3.5">
-              {Object.entries(optionsObj).map(([key, value]) => {
+              {currentQuestion.questionType !== "TITA" && Object.entries(optionsObj).map(([key, value]) => {
                 const isSelected = answers[currentQuestion.id] === key;
                 let containerClass =
                   "border-2 rounded-xl p-4 transition-all flex items-start gap-4 text-left w-full ";
@@ -331,7 +360,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                 </button>
                 {!answers[currentQuestion.id] ? (
                   <span className="text-xs text-gray-500 font-medium">
-                    Select an option above, then click <strong>CONFIRM ANSWER</strong> to verify.
+                    {currentQuestion.questionType === "TITA" ? "Type your answer above" : "Select an option above"}, then click <strong>CONFIRM ANSWER</strong> to verify.
                   </span>
                 ) : (
                   <span className="text-xs text-blue-700 font-bold">

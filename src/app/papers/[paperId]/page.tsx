@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { startExamAction } from "@/server/actions/exam";
+import { getPattern, resolvePaperSections } from "@/lib/exam-patterns";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function PaperInfoPage({
     include: {
       exam: true,
       questions: {
-        select: { section: true },
+        select: { section: true, questionNumber: true },
       },
     },
   });
@@ -42,7 +43,7 @@ export default async function PaperInfoPage({
       where: isAdmin ? {} : { isActive: true },
       include: {
         exam: true,
-        questions: { select: { section: true } },
+        questions: { select: { section: true, questionNumber: true } },
       },
     });
     paper =
@@ -54,10 +55,17 @@ export default async function PaperInfoPage({
 
   if (!paper) return notFound();
 
-  // Extract unique sections
-  const sections = Array.from(
-    new Set(paper.questions.map((q) => q.section).filter(Boolean))
-  );
+  const pattern = getPattern(paper.examPattern);
+  const sections = resolvePaperSections(paper, paper.questions);
+  const counts = new Map<string, number>();
+  for (const q of paper.questions) {
+    const k = q.section && q.section.trim() ? q.section.trim() : "General";
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  const mockMinutes =
+    pattern.timing === "sectional"
+      ? Math.round(sections.reduce((t, s) => t + (s.durationSeconds ?? 0), 0) / 60)
+      : Math.round(paper.durationSeconds / 60);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -87,7 +95,10 @@ export default async function PaperInfoPage({
       <main className="flex-1 max-w-3xl w-full mx-auto p-6 md:p-12">
         <div className="bg-white border border-gray-200 rounded-xl p-8 md:p-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">{paper.title}</h2>
-          <p className="text-gray-500 mb-8">Previous Year Question Paper</p>
+          <p className="text-gray-500 mb-2">Previous Year Question Paper</p>
+          <p className="text-sm text-gray-600 mb-8">
+            <span className="font-bold text-gray-900">{pattern.label} pattern.</span> {pattern.summary}
+          </p>
 
           <div className="grid grid-cols-2 gap-6 mb-8">
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -96,16 +107,22 @@ export default async function PaperInfoPage({
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500 mb-1">Duration</p>
-              <p className="text-2xl font-semibold text-gray-900">{Math.round(paper.durationSeconds / 60)} Minutes</p>
+              <p className="text-2xl font-semibold text-gray-900">{mockMinutes} Minutes</p>
             </div>
           </div>
 
           {sections.length > 0 && (
             <div className="mb-10">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Sections</h3>
-              <ul className="list-disc list-inside text-gray-600 space-y-1">
-                {sections.map((section, idx) => (
-                  <li key={idx}>{section}</li>
+              <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
+                {sections.map((section) => (
+                  <li key={section.name} className="flex justify-between gap-4 px-4 py-2.5">
+                    <span className="text-gray-800">{section.name}</span>
+                    <span className="text-gray-500 shrink-0">
+                      {counts.get(section.name) ?? 0} questions
+                      {section.durationSeconds ? ` · ${Math.round(section.durationSeconds / 60)} min` : ""}
+                    </span>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -129,17 +146,15 @@ export default async function PaperInfoPage({
                 </div>
               </button>
               
-              <button
-                type="submit"
-                name="mode"
-                value="MOCK"
+              <Link
+                href={`/papers/${paper.id}/instructions`}
                 className="w-full bg-gray-900 text-white hover:bg-gray-800 p-6 rounded-xl font-bold text-left transition-all hover:shadow-md"
               >
                 <div className="text-lg font-black text-white mb-1">MOCK TEST MODE</div>
                 <div className="text-xs font-medium text-gray-300">
-                  Timed exam simulation. Answers and solutions revealed after final submission.
+                  Real {pattern.label} exam conditions: timer, question palette, Mark for Review. Answers and solutions after you submit.
                 </div>
-              </button>
+              </Link>
             </form>
           </div>
         </div>

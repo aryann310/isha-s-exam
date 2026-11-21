@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import { createAttempt, finalizeAttempt, freshAttemptState } from "@/server/attempts";
+import { PATTERN_IDS, isAnswerCorrect, parseSectionConfig } from "@/lib/exam-patterns";
 import { parseQuestionOptions, questionFingerprint } from "@/lib/parse-markdown-questions";
 import {
   ImportInputError,
@@ -30,6 +32,22 @@ async function requireAdmin() {
     throw new Error("Unauthorized: Admin access required");
   }
   return session;
+}
+
+/** Pattern-related paper fields from a paper form. Unknown patterns fall back to CUSTOM. */
+function readPatternFields(formData: FormData) {
+  const raw = (formData.get("examPattern") as string) || "CUSTOM";
+  const examPattern = (PATTERN_IDS as string[]).includes(raw) ? raw : "CUSTOM";
+  const titaCorrectRaw = (formData.get("titaCorrectMarks") as string | null)?.trim() ?? "";
+  const titaCorrect = parseFloat(titaCorrectRaw);
+  const titaIncorrect = parseFloat((formData.get("titaIncorrectMarks") as string) ?? "");
+  const config = parseSectionConfig((formData.get("sectionConfig") as string) || null);
+  return {
+    examPattern,
+    titaCorrectMarks: titaCorrectRaw === "" || isNaN(titaCorrect) ? null : titaCorrect,
+    titaIncorrectMarks: isNaN(titaIncorrect) ? 0 : titaIncorrect,
+    sectionConfig: config ? JSON.stringify(config) : null,
+  };
 }
 
 // Exams Management
@@ -228,6 +246,7 @@ export async function createPaperAction(formData: FormData) {
       unattemptedMarks,
       description,
       isActive,
+      ...readPatternFields(formData),
     },
   });
 
@@ -271,6 +290,7 @@ export async function updatePaperAction(formData: FormData) {
       incorrectMarks: isNaN(incorrectMarks) ? -1 : incorrectMarks,
       unattemptedMarks: isNaN(unattemptedMarks) ? 0 : unattemptedMarks,
       description,
+      ...readPatternFields(formData),
     },
   });
 
@@ -315,10 +335,15 @@ async function checkQuestionInput(
   paperId: string,
   questionNumber: number,
   correctAnswer: string,
-  excludeId: string | null
+  excludeId: string | null,
+  questionType: string = "MCQ"
 ): Promise<string | null> {
   if (!Number.isInteger(questionNumber) || questionNumber < 1) return "Question number must be a positive whole number.";
-  if (!["A", "B", "C", "D"].includes(correctAnswer)) return "Correct answer must be A, B, C or D.";
+  if (questionType === "TITA") {
+    if (!correctAnswer.trim() || correctAnswer.length > 60) return "Enter the correct typed answer (up to 60 characters).";
+  } else if (!["A", "B", "C", "D"].includes(correctAnswer)) {
+    return "Correct answer must be A, B, C or D.";
+  }
   const clash = await prisma.question.findFirst({
     where: { paperId, questionNumber, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
     select: { id: true },
@@ -335,7 +360,7 @@ export async function createQuestionAction(formData: FormData) {
   const section = (formData.get("section") as string) || null;
   const topic = (formData.get("topic") as string) || null;
   const difficulty = (formData.get("difficulty") as string) || "Medium";
-  const correctAnswer = formData.get("correctAnswer") as string;
+  const correctAnswer = ((formData.get("correctAnswer") as string) ?? "").trim();
   const explanation = (formData.get("explanation") as string) || null;
 
   const optionA = formData.get("optionA") as string;
@@ -350,7 +375,8 @@ export async function createQuestionAction(formData: FormData) {
     D: optionD,
   };
 
-  const invalid = await checkQuestionInput(paperId, questionNumber, correctAnswer, null);
+  const questionType = formData.get("questionType") === "TITA" ? "TITA" : "MCQ";
+  const invalid = await checkQuestionInput(paperId, questionNumber, correctAnswer, null, questionType);
   if (invalid) return { success: false, error: invalid };
 
   await prisma.question.create({
@@ -360,6 +386,7 @@ export async function createQuestionAction(formData: FormData) {
       questionText,
       options: JSON.stringify(optionsObj),
       correctAnswer,
+      questionType,
       explanation,
       section,
       topic,
@@ -389,7 +416,7 @@ export async function updateQuestionAction(formData: FormData) {
   const section = (formData.get("section") as string) || null;
   const topic = (formData.get("topic") as string) || null;
   const difficulty = (formData.get("difficulty") as string) || "Medium";
-  const correctAnswer = formData.get("correctAnswer") as string;
+  const correctAnswer = ((formData.get("correctAnswer") as string) ?? "").trim();
   const explanation = (formData.get("explanation") as string) || null;
 
   const optionA = formData.get("optionA") as string;
@@ -399,7 +426,8 @@ export async function updateQuestionAction(formData: FormData) {
 
   const existing = await prisma.question.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Question not found." };
-  const invalid = await checkQuestionInput(existing.paperId, questionNumber, correctAnswer, id);
+  const questionType = formData.get("questionType") === "TITA" ? "TITA" : "MCQ";
+  const invalid = await checkQuestionInput(existing.paperId, questionNumber, correctAnswer, id, questionType);
   if (invalid) return { success: false, error: invalid };
   const existingOpts = existing ? parseQuestionOptions(existing.options) : { A: "", B: "", C: "", D: "" };
 
@@ -423,6 +451,7 @@ export async function updateQuestionAction(formData: FormData) {
       questionText,
       options: JSON.stringify(optionsObj),
       correctAnswer,
+      questionType,
       explanation,
       section,
       topic,
@@ -570,7 +599,7 @@ export async function bulkImportQuestionsAction(
         toCreate.push(q);
       } else {
         // Reuse the existing row so students' saved answers stay attached to it.
-        toUpdate.push({ id: matches[0].id, q, answerChanged: matches[0].correctAnswer !== q.correctAnswer });
+        toUpdate.push({ id: matches[0].id, q, answerChanged: matches[0].correctAnswer !== q.correctAnswer || q.questionType === "TITA" });
         toDelete.push(...matches.slice(1).map((m) => m.id));
       }
     }
@@ -590,6 +619,7 @@ export async function bulkImportQuestionsAction(
     questionText: q.questionText,
     options: JSON.stringify(q.options),
     correctAnswer: q.correctAnswer,
+    questionType: q.questionType,
     explanation: q.explanation || null,
     section: q.section,
     topic: q.topic,
@@ -607,8 +637,11 @@ export async function bulkImportQuestionsAction(
         await tx.question.update({ where: { id }, data: toData(q) });
         if (answerChanged) {
           // Keep saved answers' correctness in line with the new answer key.
-          await tx.attemptAnswer.updateMany({ where: { questionId: id, selectedAnswer: q.correctAnswer }, data: { isCorrect: true } });
-          await tx.attemptAnswer.updateMany({ where: { questionId: id, NOT: { selectedAnswer: q.correctAnswer } }, data: { isCorrect: false } });
+          const saved = await tx.attemptAnswer.findMany({ where: { questionId: id, NOT: { selectedAnswer: null } } });
+          for (const a of saved) {
+            const isCorrect = isAnswerCorrect(q.questionType, q.correctAnswer, a.selectedAnswer);
+            if (a.isCorrect !== isCorrect) await tx.attemptAnswer.update({ where: { id: a.id }, data: { isCorrect } });
+          }
         }
       }
       if (toCreate.length) {
@@ -671,42 +704,10 @@ export async function deleteStudentAction(userId: string) {
 export async function adminForceSubmitExamAction(attemptId: string) {
   await requireAdmin();
 
-  const attempt = await prisma.attempt.findUnique({
-    where: { id: attemptId },
-    include: { paper: true, answers: true },
-  });
-
+  const attempt = await prisma.attempt.findUnique({ where: { id: attemptId }, select: { id: true } });
   if (!attempt) throw new Error("Attempt not found");
 
-  const totalQuestions = await prisma.question.count({ where: { paperId: attempt.paperId } });
-  let correctCount = 0;
-  let incorrectCount = 0;
-
-  for (const ans of attempt.answers) {
-    if (ans.selectedAnswer) {
-      if (ans.isCorrect) correctCount++;
-      else incorrectCount++;
-    }
-  }
-
-  const unattemptedCount = Math.max(0, totalQuestions - (correctCount + incorrectCount));
-  const score = (correctCount * attempt.paper.correctMarks) + (incorrectCount * attempt.paper.incorrectMarks) + (unattemptedCount * attempt.paper.unattemptedMarks);
-  const accuracy = (correctCount + incorrectCount) > 0 ? (correctCount / (correctCount + incorrectCount)) * 100 : 0;
-  const timeTaken = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
-
-  await prisma.attempt.update({
-    where: { id: attemptId },
-    data: {
-      status: "AUTO_SUBMITTED",
-      submittedAt: new Date(),
-      score,
-      correct: correctCount,
-      incorrect: incorrectCount,
-      unattempted: unattemptedCount,
-      accuracy,
-      timeTaken,
-    },
-  });
+  await finalizeAttempt(attemptId, "AUTO_SUBMITTED");
 
   safeRevalidate("/admin");
   safeRevalidate("/admin/live");
@@ -730,8 +731,6 @@ export async function adminStartExamForStudentAction(
   if (!user) throw new Error("Student not found");
   if (!paper) throw new Error("Paper not found");
 
-  const durationSec = (customDurationMinutes ? customDurationMinutes * 60 : paper.durationSeconds) || 3600;
-
   const existing = await prisma.attempt.findFirst({
     where: { userId, paperId, status: "IN_PROGRESS" },
   });
@@ -740,15 +739,12 @@ export async function adminStartExamForStudentAction(
     return { success: true, attemptId: existing.id, isExisting: true };
   }
 
-  const attempt = await prisma.attempt.create({
-    data: {
-      userId,
-      paperId,
-      mode,
-      status: "IN_PROGRESS",
-      startedAt: new Date(),
-      endsAt: mode === "MOCK" ? new Date(Date.now() + durationSec * 1000) : null,
-    },
+  // A custom duration only applies to papers with one overall timer; sectional papers keep their section times.
+  const attempt = await createAttempt({
+    userId,
+    paper,
+    mode,
+    customDurationSeconds: customDurationMinutes ? customDurationMinutes * 60 : null,
   });
 
   safeRevalidate("/admin");
@@ -769,13 +765,16 @@ export async function adminExtendExamTimeAction(attemptId: string, additionalMin
     throw new Error("Attempt is not currently in progress");
   }
 
+  const extraMs = additionalMinutes * 60 * 1000;
   const currentEndsAt = attempt.endsAt ? new Date(attempt.endsAt).getTime() : Date.now();
-  const baseTime = Math.max(currentEndsAt, Date.now());
-  const newEndsAt = new Date(baseTime + additionalMinutes * 60 * 1000);
+  const newEndsAt = new Date(Math.max(currentEndsAt, Date.now()) + extraMs);
 
+  // Sectional exams: the extra time goes to the section the student is in now.
   await prisma.attempt.update({
     where: { id: attemptId },
-    data: { endsAt: newEndsAt },
+    data: attempt.sectionOrder
+      ? { endsAt: newEndsAt, sectionExtraSeconds: attempt.sectionExtraSeconds + additionalMinutes * 60 }
+      : { endsAt: newEndsAt },
   });
 
   safeRevalidate("/admin/live");
@@ -792,14 +791,21 @@ export async function adminResetAttemptAction(attemptId: string) {
 
   if (!attempt) throw new Error("Attempt not found");
 
+  let previousOrder: string[] | null = null;
+  try {
+    previousOrder = attempt.sectionOrder ? JSON.parse(attempt.sectionOrder) : null;
+  } catch {
+    previousOrder = null;
+  }
+  const state = await freshAttemptState({ paper: attempt.paper, mode: attempt.mode, sectionOrder: previousOrder });
+
   await prisma.$transaction(async (tx) => {
     await tx.attemptAnswer.deleteMany({ where: { attemptId } });
     await tx.attempt.update({
       where: { id: attemptId },
       data: {
+        ...state,
         status: "IN_PROGRESS",
-        startedAt: new Date(),
-        endsAt: attempt.mode === "MOCK" ? new Date(Date.now() + attempt.paper.durationSeconds * 1000) : null,
         submittedAt: null,
         score: null,
         correct: null,

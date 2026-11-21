@@ -8,8 +8,10 @@ export interface ParsedMarkdownQuestion {
   difficulty: string;
   questionText: string;
   options: Record<OptionKey, string>;
-  /** "" when the source has no recognisable answer line. Never guessed. */
+  /** MCQ: "A"-"D". TITA: the typed answer. "" when the source has no recognisable answer line. Never guessed. */
   correctAnswer: string;
+  /** "TITA" when declared with "- **Type**: TITA", or when the block has no options but has an answer value. */
+  questionType: "MCQ" | "TITA";
   explanation: string;
   /** Problems the parser noticed in this block (missing answer, empty option, ...). */
   warnings: string[];
@@ -71,7 +73,7 @@ export function questionFingerprint(text: string): string {
 
 const QUESTION_HEADER = /^#{1,6}\s*(?:Question|Q)\s*\.?\s*(\d+)\b/i;
 const SEPARATOR = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
-const METADATA = /^[-*+]?\s*(?:\*\*|__)?\s*(Section|Topic|Sub-?topic|Difficulty)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*(.*?)\s*(?:\*\*|__)?\s*$/i;
+const METADATA = /^[-*+]?\s*(?:\*\*|__)?\s*(Section|Topic|Sub-?topic|Difficulty|Question\s*Type|Type)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*(.*?)\s*(?:\*\*|__)?\s*$/i;
 // "**Question:** text", "Question 3: text" or a bare "**Question**" line.
 const QUESTION_LABEL = /^(?:\*\*|__)?\s*Question\s*\d*\s*(?:(?:\*\*|__)?\s*:\s*(?:\*\*|__)?|(?:\*\*|__)\s*$)\s*(.*)$/i;
 const OPTIONS_HEADER = /^(?:#{1,6}\s*)?(?:\*\*|__)?\s*(?:Options|Choices|Answer Choices)\s*:?\s*(?:\*\*|__)?\s*:?\s*$/i;
@@ -83,6 +85,12 @@ const ANSWER_LINE = new RegExp(ANSWER_LABEL + String.raw`(?:Option\s*)?[(\[]?([A
 const ANSWER_LABEL_ONLY = new RegExp(ANSWER_LABEL + "$", "i");
 // Any other "Answer: ..." line — it still ends the options, but the letter can't be trusted.
 const ANSWER_UNPARSED = new RegExp(ANSWER_LABEL, "i");
+// The whole value after an answer label, for typed (TITA) answers like "**Correct Answer:** 42".
+const ANSWER_VALUE = new RegExp(ANSWER_LABEL + String.raw`(.+?)\s*$`, "i");
+
+function cleanTypedAnswer(value: string): string {
+  return value.replace(/^(?:\*\*|__)|(?:\*\*|__)$/g, "").replace(/[.;]+$/, "").trim();
+}
 
 // An option line with an explicit marker: "(A) x", "- (a) x", "A) x", "A. x", "A: x", "[A] x",
 // "Option A: x", "**A.** x", "**(A)** x". Lowercase is only accepted with "(a)" or "a)".
@@ -164,7 +172,7 @@ type LineKind =
   | { kind: "optionsHeader" }
   | { kind: "answer"; key: OptionKey }
   | { kind: "answerLabel" }
-  | { kind: "answerUnparsed" }
+  | { kind: "answerUnparsed"; value: string }
   | { kind: "explanation"; rest: string }
   | { kind: "text"; line: string };
 
@@ -177,7 +185,7 @@ function classify(line: string): LineKind {
   const ans = t.match(ANSWER_LINE);
   if (ans) return { kind: "answer", key: ans[1].toUpperCase() as OptionKey };
   if (ANSWER_LABEL_ONLY.test(t)) return { kind: "answerLabel" };
-  if (ANSWER_UNPARSED.test(t)) return { kind: "answerUnparsed" };
+  if (ANSWER_UNPARSED.test(t)) return { kind: "answerUnparsed", value: cleanTypedAnswer(t.match(ANSWER_VALUE)?.[1] ?? "") };
   const exp = t.match(EXPLANATION_HEADER);
   if (exp) return { kind: "explanation", rest: exp[1].trim() };
   return { kind: "text", line };
@@ -190,6 +198,14 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
   let difficulty = "Medium";
   let correctAnswer = "";
   let awaitingAnswerValue = false;
+  let declaredType: "MCQ" | "TITA" | null = null;
+  let rawAnswer: string | null = null;
+  const applyMeta = (field: string, value: string) => {
+    if (field.includes("type")) declaredType = /tita|type in|typed|numeric|non[- ]?mcq/i.test(value) ? "TITA" : "MCQ";
+    else if (field === "section") section = value || section;
+    else if (field === "difficulty") difficulty = value || difficulty;
+    else topic = value || topic;
+  };
 
   const kinds = blockLines.map(classify);
 
@@ -207,17 +223,20 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
       awaitingAnswerValue = false;
     } else if (k.kind === "answerLabel") {
       awaitingAnswerValue = true;
+    } else if (k.kind === "answerUnparsed") {
+      if (rawAnswer === null && k.value) rawAnswer = k.value;
+      else explanationLines.push(blockLines[i]);
+      awaitingAnswerValue = false;
     } else if (k.kind === "explanation") {
       awaitingAnswerValue = false;
       if (k.rest) explanationLines.push(k.rest);
     } else if (k.kind === "meta") {
-      if (k.field === "section") section = k.value || section;
-      else if (k.field === "difficulty") difficulty = k.value || difficulty;
-      else topic = k.value || topic;
+      applyMeta(k.field, k.value);
     } else if (awaitingAnswerValue && k.kind === "text") {
       // "**Correct Answer:**" on one line and "C" on the next.
       const m = k.line.trim().match(/^(?:\*\*|__)?\s*(?:Option\s*)?[(\[]?([A-Da-d])[)\]]?(?![A-Za-z0-9])/);
       if (m && !correctAnswer) correctAnswer = m[1].toUpperCase();
+      else if (rawAnswer === null) rawAnswer = cleanTypedAnswer(k.line.trim());
       else explanationLines.push(blockLines[i]);
       awaitingAnswerValue = false;
     } else if (k.kind !== "blank" || explanationLines.length) {
@@ -230,9 +249,7 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
   for (let i = 0; i < bodyEnd; i++) {
     const k = kinds[i];
     if (k.kind === "meta") {
-      if (k.field === "section") section = k.value || null;
-      else if (k.field === "difficulty") difficulty = k.value || "Medium";
-      else topic = k.value || null;
+      applyMeta(k.field, k.value);
       continue;
     }
     body.push({ raw: blockLines[i], kind: k });
@@ -245,7 +262,10 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
   let optionPart: string[];
   let weakAllowed = false;
 
-  if (headerIdx !== -1) {
+  if (declaredType === "TITA") {
+    questionPart = body.map((b) => b.raw);
+    optionPart = [];
+  } else if (headerIdx !== -1) {
     // Explicit "**Options:**" — everything above it is question text, including
     // lettered statements like "A) ... E) ..." that belong to the question.
     questionPart = body.slice(0, headerIdx).map((b) => b.raw);
@@ -328,8 +348,22 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
   const questionText = qLines.join("\n").trim();
   const explanation = explanationLines.join("\n").trim();
 
+  const noOptions = OPTION_KEYS.every((k) => !options[k]);
+  const typedAnswer = rawAnswer ?? (declaredType === "TITA" ? correctAnswer : "");
+  const questionType: "MCQ" | "TITA" = declaredType ?? (noOptions && typedAnswer ? "TITA" : "MCQ");
+
+  if (questionType === "TITA") {
+    if (!questionText) warnings.push("Question text is empty");
+    if (!typedAnswer) warnings.push('No answer found for this typed-answer (TITA) question (expected "**Correct Answer:** 42")');
+    return {
+      questionNumber, section, topic, difficulty, questionText,
+      options: { A: "", B: "", C: "", D: "" },
+      correctAnswer: typedAnswer, questionType, explanation, warnings,
+    };
+  }
+
   // Titles, notes and other stray blocks: no options and no answer means it is not a question.
-  if (OPTION_KEYS.every((k) => !options[k]) && !correctAnswer) return null;
+  if (noOptions && !correctAnswer) return null;
 
   if (!questionText) warnings.push("Question text is empty");
   for (const k of OPTION_KEYS) {
@@ -343,7 +377,7 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
     );
   }
 
-  return { questionNumber, section, topic, difficulty, questionText, options, correctAnswer, explanation, warnings };
+  return { questionNumber, section, topic, difficulty, questionText, options, correctAnswer, questionType, explanation, warnings };
 }
 
 function runReachesD(lines: string[], start: number): boolean {

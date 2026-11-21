@@ -395,6 +395,11 @@ function ImportPreview({ result, stale }: { result: ImportResult; stale: boolean
                   {q.section && <span className="ml-2 font-normal text-gray-500">{q.section}</span>}
                 </div>
                 <p className="whitespace-pre-wrap text-gray-800">{q.questionText}</p>
+                {q.questionType === "TITA" ? (
+                  <p className="rounded px-2 py-1 border border-emerald-300 bg-emerald-50 text-emerald-900 font-semibold">
+                    Typed answer (TITA): <span className="font-mono">{q.correctAnswer}</span>
+                  </p>
+                ) : (
                 <ul className="grid sm:grid-cols-2 gap-1">
                   {(["A", "B", "C", "D"] as const).map((k) => (
                     <li
@@ -410,6 +415,7 @@ function ImportPreview({ result, stale }: { result: ImportResult; stale: boolean
                     </li>
                   ))}
                 </ul>
+                )}
               </div>
             ))}
           </div>
