@@ -1,10 +1,25 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { cache } from "react";
+import { createHash } from "node:crypto";
 
+/**
+ * Key used to sign session cookies. Uses SESSION_SECRET when set; otherwise it is derived from the
+ * private database connection string (which only exists in the deployment's environment), so there is
+ * never a secret in the source code. Rotating the database password therefore also signs everyone out.
+ */
+let cachedKey: Uint8Array | null = null;
 function getKey() {
-  const secretKey = process.env.SESSION_SECRET || "default_super_secret_key_for_development";
-  return new TextEncoder().encode(secretKey);
+  if (cachedKey) return cachedKey;
+  const explicit = process.env.SESSION_SECRET;
+  if (explicit && explicit.length >= 32) {
+    cachedKey = new TextEncoder().encode(explicit);
+  } else {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) throw new Error("Server misconfigured: set SESSION_SECRET (32+ characters) or DATABASE_URL.");
+    cachedKey = new Uint8Array(createHash("sha256").update(`exam-portal-session-v1\n${dbUrl}`).digest());
+  }
+  return cachedKey;
 }
 
 export async function encrypt(payload: Record<string, unknown>) {

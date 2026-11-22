@@ -2,9 +2,6 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
-const DEFAULT_DB_URL =
-  "postgresql://neondb_owner:npg_qW9FYhIs0eVA@ep-wandering-sun-b373kck7-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
-
 if (typeof WebSocket !== "undefined") {
   neonConfig.webSocketConstructor = WebSocket;
 }
@@ -16,7 +13,11 @@ export function getPrisma(): PrismaClient {
     return prismaInstance;
   }
 
-  const connectionString = process.env.DATABASE_URL || DEFAULT_DB_URL;
+  // The connection string lives only in the environment (Vercel project settings / local .env files).
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("Server misconfigured: DATABASE_URL is not set.");
+  }
 
   try {
     const pool = new Pool({ connectionString });
