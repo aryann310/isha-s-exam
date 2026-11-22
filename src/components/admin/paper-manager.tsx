@@ -74,8 +74,12 @@ export function PaperManager({
 
     startTransition(async () => {
       try {
-        await createPaperAction(formData);
-        setSuccess("Paper published / created successfully!");
+        const res = await createPaperAction(formData);
+        if (res && !res.success) {
+          setError(res.error ?? "Couldn't create the paper.");
+          return;
+        }
+        setSuccess("Paper created.");
         formEl.reset();
         router.refresh();
       } catch (err: unknown) {
@@ -93,8 +97,16 @@ export function PaperManager({
 
     startTransition(async () => {
       try {
-        await updatePaperAction(formData);
-        setSuccess("Paper updated successfully!");
+        const res = await updatePaperAction(formData);
+        if (res && !res.success) {
+          setError(res.error ?? "Couldn't update the paper.");
+          return;
+        }
+        setSuccess(
+          res && "rescored" in res && res.rescored
+            ? `Paper updated. ${res.rescored} completed attempt${res.rescored === 1 ? " was" : "s were"} re-scored with the new marks.`
+            : "Paper updated."
+        );
         setEditingPaper(null);
         router.refresh();
       } catch (err: unknown) {

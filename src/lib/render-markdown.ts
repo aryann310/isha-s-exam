@@ -1,5 +1,33 @@
 import katex from "katex";
-import { marked } from "marked";
+import { Marked, type Tokens } from "marked";
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+/** Only plain web links, in-page anchors and embedded images may be used as URLs. */
+function safeUrl(href: string, isImage: boolean): boolean {
+  const h = href.trim().toLowerCase();
+  if (isImage && /^data:image\/(png|jpe?g|gif|webp|svg\+xml);/.test(h)) return true;
+  return /^(https?:|mailto:|#|\/(?!\/))/.test(h);
+}
+
+// Question content is written as Markdown + LaTeX. Raw HTML in it is shown as text, never run, and
+// links or images with unsafe URLs (javascript:, etc.) are neutralised, so imported content can't run
+// script in a student's or admin's browser.
+const md = new Marked({
+  gfm: true,
+  breaks: true,
+  async: false,
+  renderer: {
+    html(token: Tokens.HTML | Tokens.Tag) {
+      return escapeHtml(token.text);
+    },
+  },
+  walkTokens(token) {
+    if (token.type === "link" && !safeUrl(token.href, false)) token.href = "#";
+    if (token.type === "image" && !safeUrl(token.href, true)) token.href = "";
+  },
+});
 
 export function renderMarkdownWithMath(content: string | null | undefined): string {
   if (!content) return "";
@@ -57,14 +85,10 @@ export function renderMarkdownWithMath(content: string | null | undefined): stri
   // 6. Parse markdown with marked (placeholders protect KaTeX HTML from being corrupted or escaped)
   let html = "";
   try {
-    const parsed = marked.parse(text, {
-      gfm: true,
-      breaks: true,
-      async: false,
-    });
-    html = typeof parsed === "string" ? parsed : text;
+    const parsed = md.parse(text);
+    html = typeof parsed === "string" ? parsed : escapeHtml(text);
   } catch {
-    html = text;
+    html = escapeHtml(text);
   }
 
   // 7. Restore KaTeX HTML placeholders

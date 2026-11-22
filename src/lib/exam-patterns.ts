@@ -271,9 +271,10 @@ export function isAnswerCorrect(questionType: string, correctAnswer: string, sel
   return correctAnswer.split("|").some((alt) => {
     const want = normalizeTyped(alt);
     if (!want) return false;
-    const a = Number(given);
-    const b = Number(want);
-    if (given !== "" && want !== "" && Number.isFinite(a) && Number.isFinite(b)) return Math.abs(a - b) < 1e-9;
+    // Compare by value only for plain decimals ("3.5" = "3.50" = "03.5"); anything else ("1e1", "0x1A",
+    // sequences like "2431") must match exactly.
+    const plain = /^-?(\d+\.?\d*|\.\d+)$/;
+    if (plain.test(given) && plain.test(want)) return Math.abs(Number(given) - Number(want)) < 1e-9;
     return given === want;
   });
 }

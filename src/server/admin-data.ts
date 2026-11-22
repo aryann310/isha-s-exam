@@ -58,7 +58,9 @@ export async function countLive(now = new Date()): Promise<number> {
   const since = new Date(now.getTime() - PRACTICE_ACTIVE_MINUTES * 60_000);
   const [mock, practice] = await Promise.all([
     prisma.attempt.count({ where: { status: "IN_PROGRESS", mode: "MOCK", OR: [{ endsAt: null }, { endsAt: { gt: now } }] } }),
-    prisma.attempt.count({ where: { status: "IN_PROGRESS", mode: "PRACTICE", answers: { some: { answeredAt: { gte: since } } } } }),
+    prisma.attempt.count({
+      where: { status: "IN_PROGRESS", mode: "PRACTICE", OR: [{ startedAt: { gte: since } }, { answers: { some: { answeredAt: { gte: since } } } }] },
+    }),
   ]);
   return mock + practice;
 }
@@ -120,6 +122,7 @@ export async function getOverview() {
       select: { paperId: true, score: true, accuracy: true, timeTaken: true },
     }),
     prisma.attempt.findMany({
+      where: { user: { role: "STUDENT" } },
       take: 8,
       orderBy: { startedAt: "desc" },
       select: {

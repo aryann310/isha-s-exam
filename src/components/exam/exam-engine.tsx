@@ -150,6 +150,10 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
       setTimeout(() => setSaveStatus("idle"), 2500);
 
       if (res) {
+        // The server keeps the first confirmed answer; show what it actually recorded.
+        if (res.selectedAnswer && res.selectedAnswer !== chosen) {
+          setAnswers((prev) => ({ ...prev, [currentQuestion.id]: res.selectedAnswer }));
+        }
         setResults((prev) => ({
           ...prev,
           [currentQuestion.id]: {

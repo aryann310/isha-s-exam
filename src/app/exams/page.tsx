@@ -9,7 +9,7 @@ export default async function ExamsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [exams, myAttempts] = await Promise.all([
+  const [allExams, myAttempts] = await Promise.all([
     prisma.exam.findMany({
       where: { isActive: true },
       include: {
@@ -31,6 +31,8 @@ export default async function ExamsPage() {
       },
     }),
   ]);
+  // Students only see exams that have at least one published paper.
+  const exams = session.role === "ADMIN" ? allExams : allExams.filter((e) => e.papers.length > 0);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -46,7 +48,7 @@ export default async function ExamsPage() {
             </Link>
           )}
           <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full">
-            👤 {(session.username as string) || (session.name as string) || (session.email as string)}
+            👤 {session.username || session.name}
           </span>
           <form
             action={async () => {

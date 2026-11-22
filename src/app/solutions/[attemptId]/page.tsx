@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { SolutionClient } from "@/components/exam/solution-client";
+import { loadAttemptContext } from "@/server/attempts";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,12 @@ export default async function SolutionsPage({
 
   const resolvedParams = await params;
   const isAdmin = session.role === "ADMIN";
+
+  // Brings the clock up to date first: a test whose time ran out while the student was away is
+  // scored and closed here, so its solutions can be shown.
+  const ctx = await loadAttemptContext(resolvedParams.attemptId, session);
+  if (!ctx) return notFound();
+  if (ctx.attempt.status === "IN_PROGRESS" && !isAdmin) redirect(`/exam/${resolvedParams.attemptId}`);
 
   const attempt = await prisma.attempt.findFirst({
     where: isAdmin
