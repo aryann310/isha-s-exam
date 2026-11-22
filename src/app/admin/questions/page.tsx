@@ -47,62 +47,23 @@ export default async function AdminQuestionsPage({
       : 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      {/* Header */}
-      <header className="bg-gray-950 text-white px-6 py-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-6">
-          <Link href="/admin" className="text-lg font-black tracking-wider flex items-center gap-2">
-            <span className="bg-white text-gray-950 px-2 py-0.5 rounded font-black text-sm">ADMIN</span>
-            EXAM PORTAL
-          </Link>
-          <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-gray-300">
-            <Link href="/admin" className="hover:text-white transition-colors">
-              Overview
-            </Link>
-            <Link href="/admin/live" className="text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-              Live Proctor 🔴
-            </Link>
-            <Link href="/admin/exams" className="hover:text-white transition-colors">
-              Exams
-            </Link>
-            <Link href="/admin/papers" className="hover:text-white transition-colors">
-              Papers
-            </Link>
-            <Link href="/admin/questions" className="text-white font-bold border-b-2 border-white pb-1">
-              Questions
-            </Link>
-            <Link href="/admin/import" className="hover:text-white transition-colors">
-              Bulk Import
-            </Link>
-            <Link href="/admin/results" className="hover:text-white transition-colors">
-              Student Results
-            </Link>
-            <Link href="/admin/users" className="hover:text-white transition-colors">
-              Users
-            </Link>
-          </nav>
-        </div>
-        <Link href="/admin" className="text-xs text-gray-400 hover:text-white">
-          &larr; Back to Dashboard
-        </Link>
-      </header>
+    <div>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-10">
+      <div className="w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Question Bank</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Question Bank</h2>
+            <p className="text-sm text-slate-500 mt-1">
               Add, edit, inspect, and manage individual questions for each examination paper.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-600">Select Paper:</span>
+            <span className="text-xs font-semibold text-slate-600">Select Paper:</span>
             <form method="GET" action="/admin/questions" className="flex items-center gap-2">
               <select
                 name="paperId"
                 defaultValue={selectedPaperId}
-                className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm font-bold text-gray-900 shadow-xs focus:ring-2 focus:ring-gray-900 outline-none"
+                className="border border-slate-300 rounded-lg px-3 py-2 bg-white text-sm font-bold text-slate-900 shadow-xs focus:ring-2 focus:ring-slate-900 outline-none"
               >
                 {papers.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -112,7 +73,7 @@ export default async function AdminQuestionsPage({
               </select>
               <button
                 type="submit"
-                className="text-xs bg-gray-900 text-white font-bold px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                className="text-xs bg-slate-900 text-white font-bold px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"
               >
                 Switch
               </button>
@@ -134,7 +95,7 @@ export default async function AdminQuestionsPage({
           {/* Questions List */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-slate-900">
                 Loaded Questions ({questions.length})
               </h3>
               <Link
@@ -146,7 +107,7 @@ export default async function AdminQuestionsPage({
             </div>
 
             {questions.length === 0 ? (
-              <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center text-sm text-gray-500">
+              <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-sm text-slate-500">
                 No questions found in this paper. Use the form on the left or Bulk Import to add questions.
               </div>
             ) : (
@@ -158,24 +119,24 @@ export default async function AdminQuestionsPage({
                 return (
                   <div
                     key={q.id}
-                    className={`bg-white p-5 rounded-2xl border shadow-xs space-y-3 transition-colors ${
+                    className={`bg-white p-5 rounded-xl border shadow-xs space-y-3 transition-colors ${
                       isCurrentlyEditing
                         ? "border-blue-600 ring-2 ring-blue-100"
-                        : "border-gray-200"
+                        : "border-slate-200"
                     }`}
                   >
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex items-center gap-2">
-                        <span className="bg-gray-900 text-white text-xs font-black px-2.5 py-1 rounded">
+                        <span className="bg-slate-900 text-white text-xs font-semibold px-2.5 py-1 rounded">
                           Q{q.questionNumber}
                         </span>
                         {q.section && (
-                          <span className="text-xs font-semibold bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded-full">
+                          <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">
                             {q.section}
                           </span>
                         )}
                         {q.difficulty && (
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-slate-400">
                             [{q.difficulty}]
                           </span>
                         )}
@@ -206,7 +167,7 @@ export default async function AdminQuestionsPage({
                     </div>
 
                     <div
-                      className="text-sm font-medium text-gray-900 prose max-w-none"
+                      className="text-sm font-medium text-slate-900 prose max-w-none"
                       dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.questionText) }}
                     />
 
@@ -222,7 +183,7 @@ export default async function AdminQuestionsPage({
                           className={`p-2 rounded border flex items-start gap-1.5 ${
                             q.correctAnswer === key
                               ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-bold"
-                              : "bg-gray-50 border-gray-200 text-gray-700"
+                              : "bg-slate-50 border-slate-200 text-slate-700"
                           }`}
                         >
                           <span className="font-bold">{key}:</span>
@@ -233,8 +194,8 @@ export default async function AdminQuestionsPage({
                     )}
 
                     {q.explanation && (
-                      <div className="text-xs bg-gray-50 p-2.5 rounded border border-gray-200 text-gray-600 prose max-w-none">
-                        <strong className="text-gray-900">Explanation: </strong>
+                      <div className="text-xs bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-600 prose max-w-none">
+                        <strong className="text-slate-900">Explanation: </strong>
                         <div dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.explanation) }} />
                       </div>
                     )}
@@ -244,7 +205,7 @@ export default async function AdminQuestionsPage({
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

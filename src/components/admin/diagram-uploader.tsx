@@ -119,14 +119,14 @@ export function DiagramUploader({ onInsert, label = "Upload Diagram", compact = 
   };
 
   return (
-    <div className={`bg-gray-50 border border-gray-200 rounded-xl ${compact ? "p-3" : "p-4"} space-y-3`}>
+    <div className={`bg-slate-50 border border-slate-200 rounded-xl ${compact ? "p-3" : "p-4"} space-y-3`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-base">🖼️</span>
-          <span className="text-xs font-black text-gray-900 tracking-tight">
+          <span className="text-xs font-semibold text-slate-900 tracking-tight">
             {label}
           </span>
-          <span className="text-[10px] text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded font-medium">
+          <span className="text-[10px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded font-medium">
             Zero-Hosting • Stored in DB
           </span>
         </div>
@@ -141,33 +141,33 @@ export function DiagramUploader({ onInsert, label = "Upload Diagram", compact = 
         />
         <label
           htmlFor={`diagram-upload-${label.replace(/\s+/g, "-")}`}
-          className="cursor-pointer bg-white border border-gray-300 hover:border-gray-900 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-2xs hover:bg-gray-50"
+          className="cursor-pointer bg-white border border-slate-300 hover:border-slate-900 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-2xs hover:bg-slate-50"
         >
           {preview ? "Change Image" : "+ Select Diagram Image"}
         </label>
       </div>
 
       {isProcessing && (
-        <div className="text-xs text-gray-500 flex items-center gap-2 py-2">
-          <span className="w-3.5 h-3.5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+        <div className="text-xs text-slate-500 flex items-center gap-2 py-2">
+          <span className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
           Optimizing diagram resolution and size...
         </div>
       )}
 
       {preview && !isProcessing && (
-        <div className="space-y-3 pt-1 border-t border-gray-200">
+        <div className="space-y-3 pt-1 border-t border-slate-200">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 w-full">
-              <span className="text-[11px] font-bold text-gray-600 shrink-0">Caption:</span>
+              <span className="text-[11px] font-bold text-slate-600 shrink-0">Caption:</span>
               <input
                 type="text"
                 value={diagramName}
                 onChange={(e) => setDiagramName(e.target.value)}
                 placeholder="Figure title, e.g., Triangle ABC"
-                className="text-xs border border-gray-300 rounded px-2 py-1 bg-white flex-1 focus:ring-1 focus:ring-gray-900 outline-none"
+                className="text-xs border border-slate-300 rounded px-2 py-1 bg-white flex-1 focus:ring-1 focus:ring-slate-900 outline-none"
               />
               {fileSize && (
-                <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
                   {fileSize}
                 </span>
               )}
@@ -178,7 +178,7 @@ export function DiagramUploader({ onInsert, label = "Upload Diagram", compact = 
                 <button
                   type="button"
                   onClick={handleInsert}
-                  className="bg-gray-950 hover:bg-gray-800 text-white text-xs font-black px-3 py-1.5 rounded-lg transition-colors shadow-2xs flex items-center gap-1"
+                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-2xs flex items-center gap-1"
                 >
                   {copied ? "✓ Inserted!" : "↵ Insert in Question"}
                 </button>
@@ -187,7 +187,7 @@ export function DiagramUploader({ onInsert, label = "Upload Diagram", compact = 
               <button
                 type="button"
                 onClick={handleCopy}
-                className="bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors shadow-2xs"
+                className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors shadow-2xs"
               >
                 {copied ? "✓ Copied!" : "📋 Copy Tag"}
               </button>
@@ -195,7 +195,7 @@ export function DiagramUploader({ onInsert, label = "Upload Diagram", compact = 
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-gray-400 hover:text-rose-600 text-xs px-1.5 py-1"
+                className="text-slate-400 hover:text-rose-600 text-xs px-1.5 py-1"
                 title="Remove image"
               >
                 ✕
@@ -204,7 +204,7 @@ export function DiagramUploader({ onInsert, label = "Upload Diagram", compact = 
           </div>
 
           {/* Diagram Preview Thumbnail */}
-          <div className="relative bg-white border border-gray-200 rounded-lg p-2 flex justify-center items-center max-h-48 overflow-hidden group">
+          <div className="relative bg-white border border-slate-200 rounded-lg p-2 flex justify-center items-center max-h-48 overflow-hidden group">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={preview}

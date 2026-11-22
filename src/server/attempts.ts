@@ -49,7 +49,7 @@ export async function loadAttemptContext(
   if (attempt.status !== "IN_PROGRESS") return ctx;
 
   if (state.finished) {
-    await finalizeAttempt(attempt.id, "AUTO_SUBMITTED");
+    await finalizeAttempt(attempt.id, "AUTO_SUBMITTED", state.overallDeadline);
     ctx.attempt = { ...ctx.attempt, status: "AUTO_SUBMITTED" };
     return ctx;
   }
@@ -132,8 +132,12 @@ export async function freshAttemptState(params: {
   };
 }
 
-/** Scores an attempt from the current answer key and closes it. Answered-and-marked responses count. */
-export async function finalizeAttempt(attemptId: string, status: "SUBMITTED" | "AUTO_SUBMITTED") {
+/**
+ * Scores an attempt from the current answer key and closes it. Answered-and-marked responses count.
+ * `endedAt` is when the test actually ended (its deadline) when it is closed after time ran out, so the
+ * recorded submission time and time taken don't include the hours the student was away.
+ */
+export async function finalizeAttempt(attemptId: string, status: "SUBMITTED" | "AUTO_SUBMITTED", endedAt?: Date | null) {
   const attempt = await prisma.attempt.findUnique({
     where: { id: attemptId },
     include: { paper: { include: { questions: { select: { id: true, questionType: true, correctAnswer: true } } } }, answers: true },
@@ -160,7 +164,8 @@ export async function finalizeAttempt(attemptId: string, status: "SUBMITTED" | "
   const unattempted = Math.max(0, paper.questions.length - correct - incorrect);
   score += unattempted * paper.unattemptedMarks;
 
-  const submittedAt = new Date();
+  const now = new Date();
+  const submittedAt = endedAt && endedAt.getTime() < now.getTime() && endedAt.getTime() >= attempt.startedAt.getTime() ? endedAt : now;
   const timeTaken = Math.max(0, Math.floor((submittedAt.getTime() - attempt.startedAt.getTime()) / 1000));
 
   // Only close it if nobody else did in the meantime.

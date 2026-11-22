@@ -1,172 +1,152 @@
-import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+import { getResults, RESULTS_PAGE_SIZE, type ResultsFilter } from "@/server/admin-data";
+import { formatDateTime, formatDuration, formatMarks, formatPercent, isCompleted } from "@/lib/admin-format";
+import { Card, EmptyState, ModeBadge, PageHeader, StatusBadge, btnCls, tableCls } from "@/components/admin/ui";
+import { FilterForm, filterFieldCls } from "@/components/admin/filter-form";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminResultsPage() {
+type SearchParams = { q?: string; paper?: string; status?: string; mode?: string; page?: string };
+
+export default async function AdminResultsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") redirect("/login");
 
-  const attempts = await prisma.attempt.findMany({
-    orderBy: { startedAt: "desc" },
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      paper: { select: { id: true, title: true, totalQuestions: true, exam: { select: { name: true } } } },
-    },
-  });
+  const sp = await searchParams;
+  const filter: ResultsFilter = {
+    q: sp.q?.trim() || undefined,
+    paperId: sp.paper || undefined,
+    status: sp.status === "COMPLETED" || sp.status === "IN_PROGRESS" ? sp.status : "ALL",
+    mode: sp.mode === "MOCK" || sp.mode === "PRACTICE" ? sp.mode : "ALL",
+    page: Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1),
+  };
+  const r = await getResults(filter);
+  const from = r.total ? (r.page - 1) * RESULTS_PAGE_SIZE + 1 : 0;
+  const to = Math.min(r.total, r.page * RESULTS_PAGE_SIZE);
+
+  const pageHref = (page: number) => {
+    const p = new URLSearchParams();
+    if (filter.q) p.set("q", filter.q);
+    if (filter.paperId) p.set("paper", filter.paperId);
+    if (filter.status !== "ALL") p.set("status", filter.status!);
+    if (filter.mode !== "ALL") p.set("mode", filter.mode!);
+    if (page > 1) p.set("page", String(page));
+    const qs = p.toString();
+    return qs ? `/admin/results?${qs}` : "/admin/results";
+  };
+  const filtered = filter.q || filter.paperId || filter.status !== "ALL" || filter.mode !== "ALL";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      <header className="bg-gray-950 text-white px-6 py-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-6">
-          <Link href="/admin" className="text-lg font-black tracking-wider flex items-center gap-2">
-            <span className="bg-white text-gray-950 px-2 py-0.5 rounded font-black text-sm">ADMIN</span>
-            EXAM PORTAL
-          </Link>
-          <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-gray-300">
-            <Link href="/admin" className="hover:text-white transition-colors">
-              Overview
-            </Link>
-            <Link href="/admin/live" className="text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-              Live Proctor 🔴
-            </Link>
-            <Link href="/admin/exams" className="hover:text-white transition-colors">
-              Exams
-            </Link>
-            <Link href="/admin/papers" className="hover:text-white transition-colors">
-              Papers
-            </Link>
-            <Link href="/admin/questions" className="hover:text-white transition-colors">
-              Questions
-            </Link>
-            <Link href="/admin/import" className="hover:text-white transition-colors">
-              Bulk Import
-            </Link>
-            <Link href="/admin/results" className="text-white font-bold border-b-2 border-white pb-1">
-              Student Results
-            </Link>
-            <Link href="/admin/users" className="hover:text-white transition-colors">
-              Users
-            </Link>
-          </nav>
-        </div>
-        <Link href="/admin" className="text-xs text-gray-400 hover:text-white">
-          &larr; Back to Dashboard
-        </Link>
-      </header>
+    <>
+      <PageHeader title="Results" description="Every test attempt, newest first. Percentages are of the paper's maximum marks." />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-10">
-        <div className="mb-8">
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight">Student Examination Results</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Complete audit trail of all student mock and practice test submissions.
-          </p>
-        </div>
+      <FilterForm className="mb-4 flex flex-wrap items-center gap-2">
+        <label className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <input name="q" defaultValue={filter.q ?? ""} placeholder="Search student name or email" className={`${filterFieldCls} w-72 pl-9`} />
+        </label>
+        <select name="paper" defaultValue={filter.paperId ?? ""} className={`${filterFieldCls} max-w-64`}>
+          <option value="">All papers</option>
+          {r.paperOptions.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+        </select>
+        <select name="status" defaultValue={filter.status === "ALL" ? "" : filter.status} className={filterFieldCls}>
+          <option value="">Any status</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="IN_PROGRESS">In progress</option>
+        </select>
+        <select name="mode" defaultValue={filter.mode === "ALL" ? "" : filter.mode} className={filterFieldCls}>
+          <option value="">Mock and practice</option>
+          <option value="MOCK">Mock</option>
+          <option value="PRACTICE">Practice</option>
+        </select>
+        {filtered && <Link href="/admin/results" className="text-sm text-slate-500 hover:text-slate-900">Clear</Link>}
+      </FilterForm>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          {attempts.length === 0 ? (
-            <div className="p-12 text-center text-sm text-gray-500">
-              No examination attempts found.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-100 text-gray-700 uppercase font-bold border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3.5">Student</th>
-                    <th className="px-6 py-3.5">Exam / Paper</th>
-                    <th className="px-6 py-3.5">Mode</th>
-                    <th className="px-6 py-3.5">Score</th>
-                    <th className="px-6 py-3.5">Breakdown (C / I / U)</th>
-                    <th className="px-6 py-3.5">Accuracy</th>
-                    <th className="px-6 py-3.5">Time Taken</th>
-                    <th className="px-6 py-3.5">Status</th>
-                    <th className="px-6 py-3.5">Date</th>
-                    <th className="px-6 py-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {attempts.map((att) => (
-                    <tr key={att.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-gray-900">
-                        {att.user.name}
-                        <span className="block text-[11px] text-gray-400 font-normal">
-                          {att.user.email}
-                        </span>
+      <Card bodyClassName="p-0">
+        {r.rows.length === 0 ? (
+          <EmptyState title={filtered ? "No attempts match these filters" : "No attempts yet"} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className={tableCls.table}>
+              <thead className={tableCls.thead}>
+                <tr>
+                  <th className={tableCls.th}>Student</th>
+                  <th className={tableCls.th}>Paper</th>
+                  <th className={`${tableCls.th} text-right`}>Score</th>
+                  <th className={`${tableCls.th} text-right`}>Right / wrong / skipped</th>
+                  <th className={`${tableCls.th} text-right`}>Accuracy</th>
+                  <th className={`${tableCls.th} text-right`}>Time</th>
+                  <th className={tableCls.th}>Status</th>
+                  <th className={tableCls.th}>Started</th>
+                  <th className={tableCls.th} />
+                </tr>
+              </thead>
+              <tbody className={tableCls.tbody}>
+                {r.rows.map((a) => {
+                  const done = isCompleted(a.status);
+                  return (
+                    <tr key={a.id} className={tableCls.tr}>
+                      <td className={tableCls.td}>
+                        <p className="font-medium text-slate-900">{a.user.name}</p>
+                        <p className="text-xs text-slate-500">{a.user.email}</p>
                       </td>
-                      <td className="px-6 py-4 font-semibold text-gray-800">
-                        <span className="bg-gray-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded mr-1.5">
-                          {att.paper?.exam?.name || "Exam"}
-                        </span>
-                        {att.paper?.title || "Paper"}
+                      <td className={tableCls.td}>
+                        <p className="text-slate-800">{a.paper.title}</p>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500"><ModeBadge mode={a.mode} />{a.paper.exam.name}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2 py-0.5 rounded font-bold text-[10px] ${
-                            att.mode === "MOCK"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {att.mode}
-                        </span>
+                      <td className={`${tableCls.td} text-right tabular-nums`}>
+                        {done ? (
+                          <>
+                            <span className="font-medium text-slate-900">{formatMarks(a.score)}</span>
+                            <span className="text-slate-400"> / {formatMarks(a.maxMarks)}</span>
+                            <p className="text-xs text-slate-500">{formatPercent(a.percent, 1)}</p>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 font-black text-gray-900 text-sm">
-                        {att.status === "SUBMITTED" || att.status === "AUTO_SUBMITTED"
-                          ? `${att.score} pts`
-                          : "—"}
+                      <td className={`${tableCls.td} text-right tabular-nums`}>
+                        {done ? (
+                          <>
+                            <span className="text-emerald-700">{a.correct ?? 0}</span>
+                            <span className="text-slate-300"> / </span>
+                            <span className="text-rose-700">{a.incorrect ?? 0}</span>
+                            <span className="text-slate-300"> / </span>
+                            <span className="text-slate-500">{a.unattempted ?? 0}</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 font-medium text-gray-600">
-                        <span className="text-emerald-700 font-bold">{att.correct}</span> /{" "}
-                        <span className="text-rose-700 font-bold">{att.incorrect}</span> /{" "}
-                        <span className="text-gray-400 font-bold">{att.unattempted}</span>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-gray-800">
-                        {att.status === "SUBMITTED" || att.status === "AUTO_SUBMITTED"
-                          ? `${Math.round(att.accuracy || 0)}%`
-                          : "—"}
-                      </td>
-                      <td className="px-6 py-4 text-gray-500 font-mono">
-                        {att.timeTaken ? `${Math.floor(att.timeTaken / 60)}m ${att.timeTaken % 60}s` : "—"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2 py-0.5 rounded font-bold text-[10px] ${
-                            att.status === "IN_PROGRESS"
-                              ? "bg-amber-100 text-amber-800 animate-pulse"
-                              : "bg-emerald-100 text-emerald-800"
-                          }`}
-                        >
-                          {att.status}
-                        </span>
-                      </td>
-                      <td suppressHydrationWarning className="px-6 py-4 text-gray-500">
-                        {new Date(att.startedAt).toLocaleString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/solutions/${att.id}`}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold px-3 py-1.5 rounded text-xs transition-colors"
-                        >
-                          Review &rarr;
-                        </Link>
+                      <td className={`${tableCls.td} text-right tabular-nums`}>{done ? formatPercent(a.accuracy) : "—"}</td>
+                      <td className={`${tableCls.td} text-right tabular-nums`}>{done ? formatDuration(a.timeTaken) : "—"}</td>
+                      <td className={tableCls.td}><StatusBadge status={a.status} /></td>
+                      <td className={`${tableCls.td} whitespace-nowrap text-slate-500`}>{formatDateTime(a.startedAt)}</td>
+                      <td className={`${tableCls.td} text-right`}>
+                        {done ? (
+                          <Link href={`/solutions/${a.id}`} className="text-sm text-slate-600 hover:text-slate-900">Review →</Link>
+                        ) : (
+                          <Link href="/admin/live" className="text-sm text-slate-600 hover:text-slate-900">Live →</Link>
+                        )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
+          <span className="tabular-nums">{r.total ? `${from}–${to} of ${r.total}` : "0 attempts"}</span>
+          <div className="flex gap-2">
+            {r.page > 1 ? <Link href={pageHref(r.page - 1)} className={btnCls.secondary}><ChevronLeft className="size-4" /> Previous</Link> : null}
+            {r.page < r.pages ? <Link href={pageHref(r.page + 1)} className={btnCls.secondary}>Next <ChevronRight className="size-4" /></Link> : null}
+          </div>
         </div>
-      </main>
-    </div>
+      </Card>
+    </>
   );
 }

@@ -152,9 +152,9 @@ export function PaperManager({
     <>
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Create Paper Form */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs h-fit lg:sticky lg:top-6">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs h-fit lg:sticky lg:top-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Create & Publish Paper</h3>
+            <h3 className="text-lg font-bold text-slate-900">Create & Publish Paper</h3>
             <Link
               href="/admin/exams"
               className="text-[11px] font-bold text-blue-600 hover:underline"
@@ -189,13 +189,13 @@ export function PaperManager({
           ) : (
             <form onSubmit={handleCreate} className="space-y-4 text-xs font-semibold">
               <div>
-                <label className="block text-gray-700 mb-1">Target Examination</label>
+                <label className="block text-slate-700 mb-1">Target Examination</label>
                 <select
                   name="examId"
                   value={exams.some((e) => e.id === selectedExamId) ? selectedExamId : exams[0]?.id || ""}
                   onChange={(e) => setSelectedExamId(e.target.value)}
                   required
-                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 >
                   {exams.map((ex) => (
                     <option key={ex.id} value={ex.id}>
@@ -206,53 +206,53 @@ export function PaperManager({
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">Paper Title</label>
+                <label className="block text-slate-700 mb-1">Paper Title</label>
                 <input
                   name="title"
                   placeholder="e.g. CMAT 2025 Official PYQ Slot 1"
                   required
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none placeholder:text-gray-400"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none placeholder:text-slate-400"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-700 mb-1">Year</label>
+                  <label className="block text-slate-700 mb-1">Year</label>
                   <input
                     name="year"
                     type="number"
                     defaultValue={2025}
                     required
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 mb-1">Shift / Slot</label>
+                  <label className="block text-slate-700 mb-1">Shift / Slot</label>
                   <input
                     name="shift"
                     placeholder="e.g. Slot 1"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none placeholder:text-gray-400"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-700 mb-1">Duration (Mins)</label>
+                  <label className="block text-slate-700 mb-1">Duration (Mins)</label>
                   <input
                     name="durationMinutes"
                     type="number"
                     defaultValue={60}
                     required
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 mb-1">Initial Status</label>
+                  <label className="block text-slate-700 mb-1">Initial Status</label>
                   <select
                     name="isActive"
                     defaultValue="true"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                   >
                     <option value="true">Published (Active)</option>
                     <option value="false">Draft (Hidden)</option>
@@ -262,8 +262,8 @@ export function PaperManager({
 
               <PatternSettings />
 
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
-                <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
                   Marking Scheme
                 </span>
                 <div className="grid grid-cols-3 gap-2">
@@ -275,7 +275,7 @@ export function PaperManager({
                       step="0.25"
                       defaultValue={4}
                       required
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none text-emerald-700 font-bold bg-white"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-slate-900 outline-none text-emerald-700 font-bold bg-white"
                     />
                   </div>
                   <div>
@@ -286,36 +286,36 @@ export function PaperManager({
                       step="0.25"
                       defaultValue={-1}
                       required
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none text-rose-700 font-bold bg-white"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-slate-900 outline-none text-rose-700 font-bold bg-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1 font-bold">Blank</label>
+                    <label className="block text-slate-700 mb-1 font-bold">Blank</label>
                     <input
                       name="unattemptedMarks"
                       type="number"
                       step="0.25"
                       defaultValue={0}
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none bg-white"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-slate-900 outline-none bg-white"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">Description / Notes</label>
+                <label className="block text-slate-700 mb-1">Description / Notes</label>
                 <textarea
                   name="description"
                   rows={2}
                   placeholder="Optional details or syllabus covered"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none placeholder:text-gray-400"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none placeholder:text-slate-400"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full bg-gray-950 text-white font-bold py-3 rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm shadow-sm"
+                className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors text-sm shadow-sm"
               >
                 {isPending ? "Creating Paper..." : "+ Publish Paper"}
               </button>
@@ -327,10 +327,10 @@ export function PaperManager({
         <div className="lg:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-slate-900">
                 Configured Papers ({filteredPapers.length} of {papers.length})
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 Manage, publish, unpublish, and configure questions for each paper.
               </p>
             </div>
@@ -341,20 +341,20 @@ export function PaperManager({
               placeholder="Search papers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-gray-950 outline-none bg-white w-full sm:w-48"
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900 outline-none bg-white w-full sm:w-48"
             />
           </div>
 
           {/* Exam Filter Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-            <span className="text-gray-400 font-bold mr-1 shrink-0">Filter by Exam:</span>
+            <span className="text-slate-400 font-bold mr-1 shrink-0">Filter by Exam:</span>
             <button
               type="button"
               onClick={() => setExamFilter("all")}
               className={`px-3 py-1 rounded-lg font-bold shrink-0 transition-colors ${
                 examFilter === "all"
-                  ? "bg-gray-950 text-white"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  ? "bg-slate-900 text-white"
+                  : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
               }`}
             >
               All ({papers.length})
@@ -368,8 +368,8 @@ export function PaperManager({
                   onClick={() => setExamFilter(ex.id)}
                   className={`px-3 py-1 rounded-lg font-bold shrink-0 transition-colors ${
                     examFilter === ex.id
-                      ? "bg-gray-950 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                      ? "bg-slate-900 text-white"
+                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
                   }`}
                 >
                   {ex.name} ({count})
@@ -379,9 +379,9 @@ export function PaperManager({
           </div>
 
           {filteredPapers.length === 0 ? (
-            <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center text-gray-500">
-              <p className="font-bold text-gray-800">No papers found.</p>
-              <p className="text-xs text-gray-400 mt-1">
+            <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-500">
+              <p className="font-bold text-slate-800">No papers found.</p>
+              <p className="text-xs text-slate-400 mt-1">
                 {searchQuery || examFilter !== "all"
                   ? "Try adjusting your search or exam filter."
                   : "Publish your first paper using the form on the left."}
@@ -391,16 +391,16 @@ export function PaperManager({
             filteredPapers.map((paper) => (
               <div
                 key={paper.id}
-                className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-gray-300 transition-all"
+                className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 transition-all"
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="bg-gray-900 text-white text-[10px] font-black px-2 py-0.5 rounded">
+                    <span className="bg-slate-900 text-white text-[10px] font-semibold px-2 py-0.5 rounded">
                       {paper.exam.name}
                     </span>
-                    <h4 className="text-base font-bold text-gray-900">{paper.title}</h4>
+                    <h4 className="text-base font-bold text-slate-900">{paper.title}</h4>
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
                         paper.isActive
                           ? "bg-emerald-100 text-emerald-800"
                           : "bg-amber-100 text-amber-800"
@@ -408,19 +408,19 @@ export function PaperManager({
                     >
                       {paper.isActive ? "PUBLISHED" : "DRAFT / UNPUBLISHED"}
                     </span>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
                       {getPattern(paper.examPattern).label} PATTERN
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     {paper.year} • {paper.shift || "Standard Slot"} •{" "}
                     {paper.durationSeconds / 60} mins •{" "}
-                    <span className="font-semibold text-gray-700">
+                    <span className="font-semibold text-slate-700">
                       {paper._count.questions} questions loaded
                     </span>{" "}
                     • {paper._count.attempts} attempts
                   </p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-slate-500">
                     Marking:{" "}
                     <span className="font-bold text-emerald-600">
                       +{paper.correctMarks}
@@ -445,7 +445,7 @@ export function PaperManager({
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   <Link
                     href={`/admin/questions?paperId=${paper.id}`}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                   >
                     Questions ({paper._count.questions})
                   </Link>
@@ -453,7 +453,7 @@ export function PaperManager({
                   <Link
                     href={`/papers/${paper.id}`}
                     target="_blank"
-                    className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors"
+                    className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors"
                     title="Preview student test page"
                   >
                     Preview ↗
@@ -467,7 +467,7 @@ export function PaperManager({
                       setSuccess(null);
                       setEditingPaper(paper);
                     }}
-                    className="border border-gray-300 hover:border-gray-950 hover:bg-gray-50 text-gray-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                    className="border border-slate-300 hover:border-slate-900 hover:bg-slate-50 text-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
                   >
                     <svg
                       className="w-3.5 h-3.5"
@@ -516,15 +516,15 @@ export function PaperManager({
       {/* Edit Paper Modal Dialog */}
       {editingPaper && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-gray-200 my-8">
-            <div className="flex justify-between items-center pb-4 mb-5 border-b border-gray-100">
+          <div className="bg-white rounded-xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 my-8">
+            <div className="flex justify-between items-center pb-4 mb-5 border-b border-slate-100">
               <div>
-                <h3 className="text-lg font-black text-gray-900">
+                <h3 className="text-lg font-semibold text-slate-900">
                   Edit Paper & Marking Scheme
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Update title, duration, examination, or marks schema for{" "}
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-slate-900">
                     {editingPaper.title}
                   </span>
                 </p>
@@ -532,7 +532,7 @@ export function PaperManager({
               <button
                 type="button"
                 onClick={() => setEditingPaper(null)}
-                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 ✕
               </button>
@@ -548,14 +548,14 @@ export function PaperManager({
               <input type="hidden" name="paperId" value={editingPaper.id} />
 
               <div>
-                <label className="block text-gray-700 mb-1">
+                <label className="block text-slate-700 mb-1">
                   Target Examination
                 </label>
                 <select
                   name="examId"
                   defaultValue={editingPaper.examId}
                   required
-                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 >
                   {exams.map((ex) => (
                     <option key={ex.id} value={ex.id}>
@@ -566,40 +566,40 @@ export function PaperManager({
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">Paper Title</label>
+                <label className="block text-slate-700 mb-1">Paper Title</label>
                 <input
                   name="title"
                   defaultValue={editingPaper.title}
                   required
                   placeholder="e.g. SNAP 2024 Slot 1 PYQ"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-700 mb-1">Year</label>
+                  <label className="block text-slate-700 mb-1">Year</label>
                   <input
                     name="year"
                     type="number"
                     defaultValue={editingPaper.year}
                     required
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 mb-1">Shift / Slot</label>
+                  <label className="block text-slate-700 mb-1">Shift / Slot</label>
                   <input
                     name="shift"
                     defaultValue={editingPaper.shift || ""}
                     placeholder="e.g. Shift 1"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">
+                <label className="block text-slate-700 mb-1">
                   Duration (Minutes)
                 </label>
                 <input
@@ -607,7 +607,7 @@ export function PaperManager({
                   type="number"
                   defaultValue={Math.round(editingPaper.durationSeconds / 60)}
                   required
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 />
               </div>
 
@@ -625,8 +625,8 @@ export function PaperManager({
               />
 
               {/* Marking Schema Section */}
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
-                <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider block">
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider block">
                   Marking Scheme Configuration
                 </span>
                 <div className="grid grid-cols-3 gap-3">
@@ -640,7 +640,7 @@ export function PaperManager({
                       step="0.25"
                       defaultValue={editingPaper.correctMarks}
                       required
-                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none text-emerald-700 font-bold bg-white"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none text-emerald-700 font-bold bg-white"
                     />
                   </div>
                   <div>
@@ -653,11 +653,11 @@ export function PaperManager({
                       step="0.25"
                       defaultValue={editingPaper.incorrectMarks}
                       required
-                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none text-rose-700 font-bold bg-white"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none text-rose-700 font-bold bg-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">
+                    <label className="block text-slate-700 mb-1">
                       Unattempted
                     </label>
                     <input
@@ -665,14 +665,14 @@ export function PaperManager({
                       type="number"
                       step="0.25"
                       defaultValue={editingPaper.unattemptedMarks ?? 0}
-                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none bg-white"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none bg-white"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">
+                <label className="block text-slate-700 mb-1">
                   Description / Notes
                 </label>
                 <textarea
@@ -680,22 +680,22 @@ export function PaperManager({
                   rows={2}
                   defaultValue={editingPaper.description || ""}
                   placeholder="Optional details about this question paper"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingPaper(null)}
-                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold transition-colors"
+                  className="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg shadow-sm disabled:opacity-50 transition-colors"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm disabled:opacity-50 transition-colors"
                 >
                   {isPending ? "Saving..." : "Save Changes"}
                 </button>
