@@ -74,6 +74,8 @@ model Question {
   
   paper           Paper          @relation(fields: [paperId], references: [id], onDelete: Cascade)
   attemptAnswers  AttemptAnswer[]
+
+  @@index([paperId, questionNumber])
 }
 
 model Attempt {
@@ -100,6 +102,11 @@ model Attempt {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   paper         Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
   answers       AttemptAnswer[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([paperId, status])
+  @@index([startedAt])
 }
 
 model AttemptAnswer {
@@ -115,4 +122,5 @@ model AttemptAnswer {
   question         Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
   
   @@unique([attemptId, questionId])
+  @@index([questionId])
 }

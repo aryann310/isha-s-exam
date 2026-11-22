@@ -754,33 +754,6 @@ export async function adminStartExamForStudentAction(
   return { success: true, attemptId: attempt.id };
 }
 
-export async function adminExtendExamTimeAction(attemptId: string, additionalMinutes: number) {
-  await requireAdmin();
-
-  const attempt = await prisma.attempt.findUnique({
-    where: { id: attemptId },
-  });
-
-  if (!attempt || attempt.status !== "IN_PROGRESS") {
-    throw new Error("Attempt is not currently in progress");
-  }
-
-  const extraMs = additionalMinutes * 60 * 1000;
-  const currentEndsAt = attempt.endsAt ? new Date(attempt.endsAt).getTime() : Date.now();
-  const newEndsAt = new Date(Math.max(currentEndsAt, Date.now()) + extraMs);
-
-  // Sectional exams: the extra time goes to the section the student is in now.
-  await prisma.attempt.update({
-    where: { id: attemptId },
-    data: attempt.sectionOrder
-      ? { endsAt: newEndsAt, sectionExtraSeconds: attempt.sectionExtraSeconds + additionalMinutes * 60 }
-      : { endsAt: newEndsAt },
-  });
-
-  safeRevalidate("/admin/live");
-  return { success: true, newEndsAt };
-}
-
 export async function adminResetAttemptAction(attemptId: string) {
   await requireAdmin();
 
@@ -836,26 +809,4 @@ export async function adminDeleteAttemptAction(attemptId: string) {
   safeRevalidate("/admin/live");
   safeRevalidate("/admin/results");
   return { success: true };
-}
-
-export async function adminGetLiveAttemptDetailsAction(attemptId: string) {
-  await requireAdmin();
-
-  const attempt = await prisma.attempt.findUnique({
-    where: { id: attemptId },
-    include: {
-      user: { select: { id: true, name: true, username: true, email: true } },
-      paper: {
-        include: {
-          exam: true,
-          questions: { orderBy: [{ questionNumber: "asc" }, { id: "asc" }] },
-        },
-      },
-      answers: true,
-    },
-  });
-
-  if (!attempt) throw new Error("Attempt not found");
-
-  return attempt;
 }

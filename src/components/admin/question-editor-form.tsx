@@ -215,15 +215,15 @@ export function QuestionEditorForm({
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs h-fit space-y-4">
-      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs h-fit space-y-4">
+      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
         <div>
-          <h3 className="text-lg font-black text-gray-950">
+          <h3 className="text-lg font-semibold text-slate-900">
             {editingQuestion ? `Edit Question #${editingQuestion.questionNumber}` : "Add Question"}
           </h3>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-slate-500">
             {editingQuestion ? "Updating question in:" : "Adding to:"}{" "}
-            <span className="font-bold text-gray-800">{currentPaperTitle}</span>
+            <span className="font-bold text-slate-800">{currentPaperTitle}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -232,8 +232,8 @@ export function QuestionEditorForm({
             onClick={() => setPreviewMode(!previewMode)}
             className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-colors ${
               previewMode
-                ? "bg-gray-950 text-white border-gray-950"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200"
+                ? "bg-slate-900 text-white border-slate-900"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200"
             }`}
           >
             {previewMode ? "✏️ Edit Mode" : "👁️ Live Preview"}
@@ -258,7 +258,7 @@ export function QuestionEditorForm({
           }`}
         >
           <span>{statusMessage.text}</span>
-          <button type="button" onClick={() => setStatusMessage(null)} className="ml-2 font-black">
+          <button type="button" onClick={() => setStatusMessage(null)} className="ml-2 font-semibold">
             ✕
           </button>
         </div>
@@ -266,14 +266,14 @@ export function QuestionEditorForm({
 
       {/* Live Preview Mode */}
       {previewMode ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between text-xs font-bold text-gray-500 pb-2 border-b border-gray-200">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-2 border-b border-slate-200">
             <span>Student Live Preview (Question #{questionNumber})</span>
-            <span className="bg-white border px-2 py-0.5 rounded text-gray-800">{difficulty}</span>
+            <span className="bg-white border px-2 py-0.5 rounded text-slate-800">{difficulty}</span>
           </div>
 
           <div
-            className="prose max-w-none text-gray-950 text-sm leading-relaxed"
+            className="prose max-w-none text-slate-900 text-sm leading-relaxed"
             dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(getCompiledQuestionText()) }}
           />
 
@@ -290,10 +290,10 @@ export function QuestionEditorForm({
                 className={`p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
                   correctAnswer === key
                     ? "bg-emerald-50 border-emerald-400 font-bold text-emerald-950"
-                    : "bg-white border-gray-200 text-gray-800"
+                    : "bg-white border-slate-200 text-slate-800"
                 }`}
               >
-                <span className="w-5 h-5 rounded bg-gray-100 font-bold flex items-center justify-center shrink-0">
+                <span className="w-5 h-5 rounded bg-slate-100 font-bold flex items-center justify-center shrink-0">
                   {key}
                 </span>
                 <span dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(val || "(Empty)") }} />
@@ -317,21 +317,21 @@ export function QuestionEditorForm({
         <form onSubmit={handleSubmit} className="space-y-4 text-xs font-semibold">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-gray-700 mb-1">Question Number</label>
+              <label className="block text-slate-700 mb-1">Question Number</label>
               <input
                 type="number"
                 value={questionNumber}
                 onChange={(e) => setQuestionNumber(parseInt(e.target.value, 10) || 1)}
                 required
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
               />
             </div>
             <div>
-              <label className="block text-gray-700 mb-1">Difficulty</label>
+              <label className="block text-slate-700 mb-1">Difficulty</label>
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-gray-900 outline-none"
+                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-slate-900 outline-none"
               >
                 <option value="Easy">Easy</option>
                 <option value="Medium">Medium</option>
@@ -342,21 +342,21 @@ export function QuestionEditorForm({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-gray-700 mb-1">Section</label>
+              <label className="block text-slate-700 mb-1">Section</label>
               <input
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
                 placeholder="e.g. Quantitative Techniques"
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
               />
             </div>
             <div>
-              <label className="block text-gray-700 mb-1">Topic</label>
+              <label className="block text-slate-700 mb-1">Topic</label>
               <input
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="e.g. Geometry & Diagrams"
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
               />
             </div>
           </div>
@@ -364,25 +364,25 @@ export function QuestionEditorForm({
           {/* Question Textarea */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-gray-700">Question Statement (Supports Markdown & Math)</label>
+              <label className="block text-slate-700">Question Statement (Supports Markdown & Math)</label>
             </div>
             <textarea
               rows={3}
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
               placeholder="Enter the question text statement (e.g. In the figure below, find the area of shaded region...)"
-              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
             />
           </div>
 
           {/* Diagram Attachment Box */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 space-y-3">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-base">🖼️</span>
-                <span className="font-bold text-gray-900">Question Diagram / Image</span>
+                <span className="font-bold text-slate-900">Question Diagram / Image</span>
                 {attachedDiagram && (
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
                     ✓ Attached (Will be saved)
                   </span>
                 )}
@@ -398,29 +398,29 @@ export function QuestionEditorForm({
               />
               <label
                 htmlFor="question-diagram-picker"
-                className="cursor-pointer bg-white border border-gray-300 hover:border-gray-900 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-2xs hover:bg-gray-50"
+                className="cursor-pointer bg-white border border-slate-300 hover:border-slate-900 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-2xs hover:bg-slate-50"
               >
                 {attachedDiagram ? "Change Image" : "+ Attach Diagram"}
               </label>
             </div>
 
             {isProcessingImage && (
-              <div className="text-xs text-gray-500 flex items-center gap-2 py-1">
-                <span className="w-3.5 h-3.5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+              <div className="text-xs text-slate-500 flex items-center gap-2 py-1">
+                <span className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
                 Optimizing and embedding diagram...
               </div>
             )}
 
             {attachedDiagram && !isProcessingImage && (
-              <div className="space-y-2.5 pt-2 border-t border-gray-200">
+              <div className="space-y-2.5 pt-2 border-t border-slate-200">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-gray-600 shrink-0">Caption:</span>
+                  <span className="text-[11px] font-bold text-slate-600 shrink-0">Caption:</span>
                   <input
                     type="text"
                     value={diagramCaption}
                     onChange={(e) => setDiagramCaption(e.target.value)}
                     placeholder="e.g. Figure 1"
-                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white flex-1 focus:ring-1 focus:ring-gray-900 outline-none"
+                    className="text-xs border border-slate-300 rounded px-2 py-1 bg-white flex-1 focus:ring-1 focus:ring-slate-900 outline-none"
                   />
                   <button
                     type="button"
@@ -431,7 +431,7 @@ export function QuestionEditorForm({
                   </button>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-lg p-2 flex justify-center items-center max-h-40 overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-lg p-2 flex justify-center items-center max-h-40 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={attachedDiagram}
@@ -445,7 +445,7 @@ export function QuestionEditorForm({
 
           {/* Question type */}
           <div>
-            <label className="block text-gray-700 mb-1">Question Type</label>
+            <label className="block text-slate-700 mb-1">Question Type</label>
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
@@ -461,7 +461,7 @@ export function QuestionEditorForm({
                     if (value === "MCQ" && !["A", "B", "C", "D"].includes(correctAnswer)) setCorrectAnswer("A");
                     if (value === "TITA" && ["A", "B", "C", "D"].includes(correctAnswer)) setCorrectAnswer("");
                   }}
-                  className={`py-2 rounded-lg border text-xs font-bold ${questionType === value ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300"}`}
+                  className={`py-2 rounded-lg border text-xs font-bold ${questionType === value ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-300"}`}
                 >
                   {label}
                 </button>
@@ -471,16 +471,16 @@ export function QuestionEditorForm({
 
           {/* Options */}
           <div className={`space-y-2 ${questionType === "TITA" ? "hidden" : ""}`}>
-            <label className="block text-gray-700">Answer Options</label>
+            <label className="block text-slate-700">Answer Options</label>
             {(["A", "B", "C", "D"] as const).map((optKey) => (
               <div key={optKey} className="flex items-center gap-2">
-                <span className="font-bold text-gray-700 w-5">{optKey}:</span>
+                <span className="font-bold text-slate-700 w-5">{optKey}:</span>
                 <input
                   value={options[optKey] || ""}
                   onChange={(e) => setOptions((prev) => ({ ...prev, [optKey]: e.target.value }))}
                   placeholder={`Option ${optKey} text (supports math $...$)`}
                   required={questionType === "MCQ"}
-                  className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+                  className="flex-1 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 />
               </div>
             ))}
@@ -488,22 +488,22 @@ export function QuestionEditorForm({
 
           {questionType === "TITA" ? (
             <div>
-              <label className="block text-gray-700 mb-1">Correct Answer</label>
+              <label className="block text-slate-700 mb-1">Correct Answer</label>
               <input
                 value={correctAnswer}
                 onChange={(e) => setCorrectAnswer(e.target.value)}
                 placeholder="e.g. 42 (use | for alternatives, e.g. 0.5|1/2)"
                 required
-                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-sm font-mono focus:ring-2 focus:ring-gray-900 outline-none"
+                className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-sm font-mono focus:ring-2 focus:ring-slate-900 outline-none"
               />
             </div>
           ) : (
           <div>
-            <label className="block text-gray-700 mb-1">Correct Answer Key</label>
+            <label className="block text-slate-700 mb-1">Correct Answer Key</label>
             <select
               value={correctAnswer}
               onChange={(e) => setCorrectAnswer(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-sm font-bold focus:ring-2 focus:ring-gray-900 outline-none"
+              className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-sm font-bold focus:ring-2 focus:ring-slate-900 outline-none"
             >
               <option value="A">Option A</option>
               <option value="B">Option B</option>
@@ -514,13 +514,13 @@ export function QuestionEditorForm({
           )}
 
           <div>
-            <label className="block text-gray-700 mb-1">Detailed Solution / Explanation</label>
+            <label className="block text-slate-700 mb-1">Detailed Solution / Explanation</label>
             <textarea
               rows={2}
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
               placeholder="Step-by-step solution shown in Practice mode and post-exam review..."
-              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
+              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
             />
           </div>
 
@@ -528,7 +528,7 @@ export function QuestionEditorForm({
             <button
               type="submit"
               disabled={isPending}
-              className="flex-1 bg-gray-950 text-white font-bold py-3 rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm shadow-sm flex items-center justify-center gap-2"
+              className="flex-1 bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors text-sm shadow-sm flex items-center justify-center gap-2"
             >
               {isPending
                 ? "Saving to Database..."

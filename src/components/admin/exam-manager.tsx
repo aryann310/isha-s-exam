@@ -183,14 +183,14 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
 
       <div className="grid lg:grid-cols-3 gap-8 items-start">
         {/* Create Exam Card */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs lg:sticky lg:top-6">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs lg:sticky lg:top-6">
           <div className="flex items-center gap-2 mb-4">
-            <span className="w-7 h-7 bg-gray-900 text-white rounded-lg flex items-center justify-center font-black text-xs">
+            <span className="w-7 h-7 bg-slate-900 text-white rounded-lg flex items-center justify-center font-semibold text-xs">
               +
             </span>
             <div>
-              <h3 className="text-base font-black text-gray-950">Create New Exam</h3>
-              <p className="text-[11px] text-gray-500">
+              <h3 className="text-base font-semibold text-slate-900">Create New Exam</h3>
+              <p className="text-[11px] text-slate-500">
                 e.g. CMAT, SNAP, CAT, XAT, NMAT, or custom
               </p>
             </div>
@@ -198,7 +198,7 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
 
           <form onSubmit={handleCreate} className="space-y-4 text-xs font-semibold">
             <div>
-              <label className="block text-gray-700 mb-1">
+              <label className="block text-slate-700 mb-1">
                 Exam Name <span className="text-rose-500">*</span>
               </label>
               <input
@@ -207,17 +207,17 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                 onChange={handleNameChange}
                 placeholder="e.g. CMAT, SNAP, XAT, CAT, NMAT"
                 required
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-gray-950 outline-none transition-all placeholder:text-gray-400"
+                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-slate-900 outline-none transition-all placeholder:text-slate-400"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-gray-700">
+                <label className="block text-slate-700">
                   URL Slug / Key <span className="text-rose-500">*</span>
                 </label>
                 {isAutoSlug ? (
-                  <span className="text-[10px] text-gray-400 font-normal">Auto-generated</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Auto-generated</span>
                 ) : (
                   <button
                     type="button"
@@ -231,8 +231,8 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                   </button>
                 )}
               </div>
-              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-gray-50 focus-within:ring-2 focus-within:ring-gray-950 focus-within:bg-white transition-all">
-                <span className="px-2.5 text-xs text-gray-400 bg-gray-100 border-r border-gray-200 select-none py-2.5">
+              <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-slate-50 focus-within:ring-2 focus-within:ring-slate-900 focus-within:bg-white transition-all">
+                <span className="px-2.5 text-xs text-slate-400 bg-slate-100 border-r border-slate-200 select-none py-2.5">
                   /exams/
                 </span>
                 <input
@@ -241,34 +241,34 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                   onChange={handleSlugChange}
                   placeholder="e.g. cmat"
                   required
-                  className="w-full p-2.5 text-sm font-mono text-gray-900 bg-transparent outline-none"
+                  className="w-full p-2.5 text-sm font-mono text-slate-900 bg-transparent outline-none"
                 />
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p className="text-[10px] text-slate-400 mt-1">
                 Unique identifier used in student exam URL
               </p>
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-1">Description</label>
+              <label className="block text-slate-700 mb-1">Description</label>
               <textarea
                 name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="Brief description of the exam, eligibility, or year papers covered"
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-950 outline-none transition-all placeholder:text-gray-400"
+                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all placeholder:text-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-1.5">Publish Status</label>
+              <label className="block text-slate-700 mb-1.5">Publish Status</label>
               <div className="grid grid-cols-2 gap-2">
                 <label
                   className={`border rounded-lg p-2.5 flex items-center gap-2 cursor-pointer transition-all ${
                     isActive
                       ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-bold"
-                      : "border-gray-200 bg-white text-gray-600"
+                      : "border-slate-200 bg-white text-slate-600"
                   }`}
                 >
                   <input
@@ -286,7 +286,7 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                   className={`border rounded-lg p-2.5 flex items-center gap-2 cursor-pointer transition-all ${
                     !isActive
                       ? "border-amber-500 bg-amber-50 text-amber-900 font-bold"
-                      : "border-gray-200 bg-white text-gray-600"
+                      : "border-slate-200 bg-white text-slate-600"
                   }`}
                 >
                   <input
@@ -305,7 +305,7 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gray-950 text-white font-bold py-3 rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-all text-sm shadow-sm flex items-center justify-center gap-2"
+              className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm flex items-center justify-center gap-2"
             >
               {isPending ? (
                 <>
@@ -323,25 +323,25 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
         <div className="lg:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2">
             <div>
-              <h3 className="text-lg font-black text-gray-950">
+              <h3 className="text-lg font-semibold text-slate-900">
                 All Configured Exams ({initialExams.length})
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 Each exam acts as a category where you can publish multiple previous year papers or mocks.
               </p>
             </div>
             <Link
               href="/admin/papers"
-              className="text-xs font-bold text-gray-900 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+              className="text-xs font-bold text-slate-900 bg-white border border-slate-300 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
             >
               📄 Manage All Papers &rarr;
             </Link>
           </div>
 
           {initialExams.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center text-gray-500">
-              <p className="font-bold text-gray-800 mb-1">No exams configured yet.</p>
-              <p className="text-xs text-gray-400">
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+              <p className="font-bold text-slate-800 mb-1">No exams configured yet.</p>
+              <p className="text-xs text-slate-400">
                 Use the form on the left to create your first exam (e.g. CMAT, SNAP, CAT).
               </p>
             </div>
@@ -359,33 +359,33 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
               return (
                 <div
                   key={exam.id}
-                  className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs hover:border-gray-300 transition-all"
+                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-all"
                 >
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div className="flex items-start gap-3.5">
-                      <div className="w-12 h-12 rounded-xl bg-gray-950 text-white font-black text-lg flex items-center justify-center shrink-0 shadow-xs">
+                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-white font-semibold text-lg flex items-center justify-center shrink-0 shadow-xs">
                         {exam.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-lg font-black text-gray-950 tracking-tight">
+                          <h4 className="text-lg font-semibold text-slate-900 tracking-tight">
                             {exam.name}
                           </h4>
-                          <span className="font-mono text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-medium">
+                          <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">
                             /exams/{exam.slug}
                           </span>
                           <span
-                            className={`text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full ${
+                            className={`text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full ${
                               exam.isActive
                                 ? "bg-emerald-100 text-emerald-800"
-                                : "bg-gray-100 text-gray-600"
+                                : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             {exam.isActive ? "PUBLISHED / ACTIVE" : "DRAFT / DISABLED"}
                           </span>
                         </div>
                         {exam.description && (
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                          <p className="text-xs text-slate-600 mt-1 line-clamp-2">
                             {exam.description}
                           </p>
                         )}
@@ -395,14 +395,14 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
                       <Link
                         href={`/admin/papers?examId=${exam.id}`}
-                        className="bg-gray-950 hover:bg-gray-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                        className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
                       >
                         + Add Paper
                       </Link>
                       <Link
                         href={`/exams/${exam.slug}`}
                         target="_blank"
-                        className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                        className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
                         title="View student facing page"
                       >
                         Student View ↗
@@ -411,28 +411,28 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                   </div>
 
                   {/* Metrics Bar */}
-                  <div className="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4 text-center">
+                  <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4 text-center">
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                         Papers
                       </p>
-                      <p className="text-sm font-black text-gray-900">
+                      <p className="text-sm font-semibold text-slate-900">
                         {exam.papers.length}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                         Total Questions
                       </p>
-                      <p className="text-sm font-black text-gray-900">
+                      <p className="text-sm font-semibold text-slate-900">
                         {totalQuestions}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                         Student Attempts
                       </p>
-                      <p className="text-sm font-black text-gray-900">
+                      <p className="text-sm font-semibold text-slate-900">
                         {totalAttempts}
                       </p>
                     </div>
@@ -441,7 +441,7 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                   {/* Papers in this Exam preview */}
                   {exam.papers.length > 0 ? (
                     <div className="mb-4">
-                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                         Published Papers:
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -450,17 +450,17 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                             key={p.id}
                             className={`text-xs px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 ${
                               p.isActive
-                                ? "bg-white border-gray-200 text-gray-800"
-                                : "bg-gray-100 border-gray-200 text-gray-500 line-through"
+                                ? "bg-white border-slate-200 text-slate-800"
+                                : "bg-slate-100 border-slate-200 text-slate-500 line-through"
                             }`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
-                                p.isActive ? "bg-emerald-500" : "bg-gray-400"
+                                p.isActive ? "bg-emerald-500" : "bg-slate-400"
                               }`}
                             />
                             {p.title}
-                            <span className="text-[10px] text-gray-400 font-normal">
+                            <span className="text-[10px] text-slate-400 font-normal">
                               ({p.totalQuestions || p._count?.questions || 0} Qs)
                             </span>
                           </span>
@@ -480,8 +480,8 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                   )}
 
                   {/* Actions Bar */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 text-xs">
-                    <span className="text-[11px] text-gray-400">
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                    <span className="text-[11px] text-slate-400">
                       ID: <code className="font-mono">{exam.id}</code>
                     </span>
 
@@ -494,7 +494,7 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                           setSuccess(null);
                           setEditingExam(exam);
                         }}
-                        className="border border-gray-300 hover:border-gray-950 hover:bg-gray-50 text-gray-800 font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                        className="border border-slate-300 hover:border-slate-900 hover:bg-slate-50 text-slate-800 font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -513,7 +513,7 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                         onClick={() => handleToggle(exam.id, exam.isActive, exam.name)}
                         className={`border font-semibold px-2.5 py-1 rounded-lg transition-colors ${
                           exam.isActive
-                            ? "border-gray-200 text-gray-700 hover:bg-gray-100"
+                            ? "border-slate-200 text-slate-700 hover:bg-slate-100"
                             : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                         }`}
                       >
@@ -540,18 +540,18 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
       {/* Edit Exam Modal */}
       {editingExam && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-200 my-8">
-            <div className="flex justify-between items-center pb-4 mb-5 border-b border-gray-100">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 my-8">
+            <div className="flex justify-between items-center pb-4 mb-5 border-b border-slate-100">
               <div>
-                <h3 className="text-lg font-black text-gray-950">Edit Exam Details</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h3 className="text-lg font-semibold text-slate-900">Edit Exam Details</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
                   Update title, URL slug, description, or published state
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingExam(null)}
-                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 ✕
               </button>
@@ -567,68 +567,68 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
               <input type="hidden" name="examId" value={editingExam.id} />
 
               <div>
-                <label className="block text-gray-700 mb-1">
+                <label className="block text-slate-700 mb-1">
                   Exam Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   name="name"
                   defaultValue={editingExam.name}
                   required
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm font-semibold focus:ring-2 focus:ring-gray-950 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-semibold focus:ring-2 focus:ring-slate-900 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">
+                <label className="block text-slate-700 mb-1">
                   URL Slug <span className="text-rose-500">*</span>
                 </label>
-                <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-gray-50 focus-within:ring-2 focus-within:ring-gray-950 focus-within:bg-white">
-                  <span className="px-2.5 text-xs text-gray-400 bg-gray-100 border-r border-gray-200 select-none py-2.5">
+                <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-slate-50 focus-within:ring-2 focus-within:ring-slate-900 focus-within:bg-white">
+                  <span className="px-2.5 text-xs text-slate-400 bg-slate-100 border-r border-slate-200 select-none py-2.5">
                     /exams/
                   </span>
                   <input
                     name="slug"
                     defaultValue={editingExam.slug}
                     required
-                    className="w-full p-2.5 text-sm font-mono text-gray-900 bg-transparent outline-none"
+                    className="w-full p-2.5 text-sm font-mono text-slate-900 bg-transparent outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1">Description</label>
+                <label className="block text-slate-700 mb-1">Description</label>
                 <textarea
                   name="description"
                   defaultValue={editingExam.description || ""}
                   rows={3}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-gray-950 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-1.5">Status</label>
+                <label className="block text-slate-700 mb-1.5">Status</label>
                 <select
                   name="isActive"
                   defaultValue={editingExam.isActive ? "true" : "false"}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-sm focus:ring-2 focus:ring-gray-950 outline-none font-semibold"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-sm focus:ring-2 focus:ring-slate-900 outline-none font-semibold"
                 >
                   <option value="true">Active (Published to Students)</option>
                   <option value="false">Disabled (Draft / Hidden)</option>
                 </select>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingExam(null)}
-                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold transition-colors"
+                  className="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="px-5 py-2.5 bg-gray-950 hover:bg-gray-800 text-white font-bold rounded-lg shadow-sm disabled:opacity-50 transition-colors"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm disabled:opacity-50 transition-colors"
                 >
                   {isPending ? "Saving Changes..." : "Save Changes"}
                 </button>

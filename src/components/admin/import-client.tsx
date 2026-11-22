@@ -172,16 +172,16 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
   };
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-xs space-y-6">
+    <div className="bg-white p-6 md:p-8 rounded-xl border border-slate-200 shadow-xs space-y-6">
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
             Target Paper
           </label>
           <select
             value={selectedPaperId}
             onChange={(e) => setSelectedPaperId(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-gray-900 outline-none"
+            className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-slate-900 outline-none"
           >
             {papers.map((p) => (
               <option key={p.id} value={p.id}>
@@ -192,7 +192,7 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
             Data Format
           </label>
           <div className="flex gap-2">
@@ -201,8 +201,8 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
               onClick={() => handleFormatChange("markdown")}
               className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
                 format === "markdown"
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
               }`}
             >
               Markdown (.md)
@@ -212,8 +212,8 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
               onClick={() => handleFormatChange("json")}
               className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
                 format === "json"
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
               }`}
             >
               JSON
@@ -223,8 +223,8 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
               onClick={() => handleFormatChange("csv")}
               className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
                 format === "csv"
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
               }`}
             >
               CSV
@@ -234,7 +234,7 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
       </div>
 
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">Import Mode</label>
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Import Mode</label>
         <div className="flex gap-2">
           {(
             [
@@ -247,11 +247,11 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
               type="button"
               onClick={() => setMode(value)}
               className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border text-left transition-colors ${
-                mode === value ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                mode === value ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
               }`}
             >
               {label}
-              <span className={`block font-normal mt-0.5 ${mode === value ? "text-gray-300" : "text-gray-500"}`}>{help}</span>
+              <span className={`block font-normal mt-0.5 ${mode === value ? "text-slate-300" : "text-slate-500"}`}>{help}</span>
             </button>
           ))}
         </div>
@@ -270,11 +270,11 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
 
       <div>
         <div className="flex flex-wrap justify-between items-center gap-2 mb-1">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-700">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
             Paste or Upload PYQ Data ({format.toUpperCase()})
           </label>
           <div className="flex items-center gap-3">
-            <label className="text-xs text-gray-600 hover:text-gray-950 font-semibold cursor-pointer border border-gray-300 px-2.5 py-1 rounded bg-gray-50 hover:bg-gray-100 transition-colors">
+            <label className="text-xs text-slate-600 hover:text-slate-900 font-semibold cursor-pointer border border-slate-300 px-2.5 py-1 rounded bg-slate-50 hover:bg-slate-100 transition-colors">
               📁 Upload File (.md, .json, .csv)
               <input
                 type="file"
@@ -296,7 +296,7 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
           rows={15}
           value={rawData}
           onChange={(e) => setRawData(e.target.value)}
-          className="w-full font-mono text-xs border border-gray-300 rounded-xl p-3.5 bg-gray-50 text-gray-900 focus:bg-white focus:ring-2 focus:ring-gray-900 outline-none"
+          className="w-full font-mono text-xs border border-slate-300 rounded-xl p-3.5 bg-slate-50 text-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900 outline-none"
           placeholder={`Paste ${format.toUpperCase()} questions here...`}
         />
       </div>
@@ -316,14 +316,14 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
       {preview && <ImportPreview result={preview.result} stale={!previewIsCurrent} />}
 
       <div className="flex flex-wrap justify-between items-center gap-3 pt-2">
-        <p className="text-xs text-gray-500">
-          Supports LaTeX formulas (<code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700">$...$</code>), Markdown tables, options, and step-by-step explanations.
+        <p className="text-xs text-slate-500">
+          Supports LaTeX formulas (<code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">$...$</code>), Markdown tables, options, and step-by-step explanations.
         </p>
         <div className="flex gap-2">
           <button
             onClick={() => runImport(true)}
             disabled={loading}
-            className="bg-white text-gray-900 border border-gray-300 font-bold text-sm px-5 py-3 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="bg-white text-slate-900 border border-slate-300 font-bold text-sm px-5 py-3 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             {loading ? "Checking..." : "1. Check & Preview"}
           </button>
@@ -331,7 +331,7 @@ export function ImportClient({ papers }: { papers: Array<{ id: string; title: st
             onClick={() => runImport(false)}
             disabled={loading || !previewIsCurrent || !preview?.result.success}
             title={!previewIsCurrent ? "Run Check & Preview on the current input first" : undefined}
-            className="bg-gray-900 text-white font-bold text-sm px-5 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-40"
+            className="bg-slate-900 text-white font-bold text-sm px-5 py-3 rounded-lg hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-40"
           >
             {loading ? "Working..." : `2. Import ${previewIsCurrent && preview ? preview.result.count : ""} Questions`}
           </button>
@@ -360,41 +360,41 @@ function ImportPreview({ result, stale }: { result: ImportResult; stale: boolean
               ["Will delete", result.deleted],
             ] as const
           ).map(([label, n]) => (
-            <div key={label} className="border border-gray-200 rounded-xl p-3">
-              <div className="text-2xl font-black text-gray-900">{n}</div>
-              <div className="text-xs font-semibold text-gray-500">{label}</div>
+            <div key={label} className="border border-slate-200 rounded-xl p-3">
+              <div className="text-2xl font-semibold text-slate-900">{n}</div>
+              <div className="text-xs font-semibold text-slate-500">{label}</div>
             </div>
           ))}
         </div>
       )}
       {issues.length > 0 && (
-        <div className="border border-gray-200 rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100">
+        <div className="border border-slate-200 rounded-xl max-h-72 overflow-y-auto divide-y divide-slate-100">
           {issues.map((issue, i) => (
             <div key={i} className="px-3 py-2 text-xs flex gap-2">
-              <span className={`font-black shrink-0 ${issue.level === "error" ? "text-rose-700" : "text-amber-700"}`}>
+              <span className={`font-semibold shrink-0 ${issue.level === "error" ? "text-rose-700" : "text-amber-700"}`}>
                 {issue.level === "error" ? "ERROR" : "WARN"}
               </span>
-              <span className="font-bold text-gray-700 shrink-0">
+              <span className="font-bold text-slate-700 shrink-0">
                 {issue.questionNumber !== null ? `Q${issue.questionNumber}` : "Paper"}
               </span>
-              <span className="text-gray-700">{issue.message}</span>
+              <span className="text-slate-700">{issue.message}</span>
             </div>
           ))}
         </div>
       )}
       {result.preview.length > 0 && (
-        <details className="border border-gray-200 rounded-xl">
-          <summary className="px-3 py-2 text-xs font-bold text-gray-700 cursor-pointer">
+        <details className="border border-slate-200 rounded-xl">
+          <summary className="px-3 py-2 text-xs font-bold text-slate-700 cursor-pointer">
             Preview parsed questions ({result.preview.length})
           </summary>
-          <div className="max-h-[28rem] overflow-y-auto divide-y divide-gray-100">
+          <div className="max-h-[28rem] overflow-y-auto divide-y divide-slate-100">
             {result.preview.map((q, i) => (
               <div key={i} className="p-3 text-xs space-y-1.5">
-                <div className="font-bold text-gray-900">
+                <div className="font-bold text-slate-900">
                   Q{q.questionNumber}
-                  {q.section && <span className="ml-2 font-normal text-gray-500">{q.section}</span>}
+                  {q.section && <span className="ml-2 font-normal text-slate-500">{q.section}</span>}
                 </div>
-                <p className="whitespace-pre-wrap text-gray-800">{q.questionText}</p>
+                <p className="whitespace-pre-wrap text-slate-800">{q.questionText}</p>
                 {q.questionType === "TITA" ? (
                   <p className="rounded px-2 py-1 border border-emerald-300 bg-emerald-50 text-emerald-900 font-semibold">
                     Typed answer (TITA): <span className="font-mono">{q.correctAnswer}</span>
@@ -407,10 +407,10 @@ function ImportPreview({ result, stale }: { result: ImportResult; stale: boolean
                       className={`whitespace-pre-wrap rounded px-2 py-1 border ${
                         q.correctAnswer === k
                           ? "border-emerald-300 bg-emerald-50 text-emerald-900 font-semibold"
-                          : "border-gray-200 text-gray-700"
+                          : "border-slate-200 text-slate-700"
                       }`}
                     >
-                      <span className="font-black mr-1">{k}.</span>
+                      <span className="font-semibold mr-1">{k}.</span>
                       {q.options[k] || <em className="text-rose-600">empty</em>}
                     </li>
                   ))}

@@ -85,17 +85,17 @@ export function PatternSettings({
   const totalSectionMinutes = rows.reduce((t, r) => t + (r.minutes ?? 0), 0);
 
   return (
-    <div ref={ref} className="border border-gray-200 rounded-lg p-3 space-y-3 bg-gray-50">
+    <div ref={ref} className="border border-slate-200 rounded-lg p-3 space-y-3 bg-slate-50">
       <input type="hidden" name="examPattern" value={pattern} />
       <input type="hidden" name="sectionConfig" value={sectionConfig} />
 
       <div>
-        <label className="block text-gray-700 mb-1">Exam Pattern</label>
+        <label className="block text-slate-700 mb-1">Exam Pattern</label>
         <div className="flex gap-2">
           <select
             value={pattern}
             onChange={(e) => changePattern(e.target.value as ExamPatternId)}
-            className="flex-1 border border-gray-300 rounded-lg p-2.5 bg-white text-sm font-semibold"
+            className="flex-1 border border-slate-300 rounded-lg p-2.5 bg-white text-sm font-semibold"
           >
             {PATTERN_IDS.map((id) => (
               <option key={id} value={id}>
@@ -103,16 +103,16 @@ export function PatternSettings({
               </option>
             ))}
           </select>
-          <button type="button" onClick={applyPreset} className="px-3 rounded-lg border border-gray-900 bg-white text-gray-900 text-xs font-bold hover:bg-gray-100">
+          <button type="button" onClick={applyPreset} className="px-3 rounded-lg border border-slate-900 bg-white text-slate-900 text-xs font-bold hover:bg-slate-100">
             Apply preset marks &amp; time
           </button>
         </div>
-        <p className="text-[11px] font-normal text-gray-500 mt-1">{preset.summary}</p>
+        <p className="text-[11px] font-normal text-slate-500 mt-1">{preset.summary}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-gray-700 mb-1">TITA correct marks</label>
+          <label className="block text-slate-700 mb-1">TITA correct marks</label>
           <input
             name="titaCorrectMarks"
             type="number"
@@ -120,33 +120,33 @@ export function PatternSettings({
             value={titaCorrect}
             onChange={(e) => setTitaCorrect(e.target.value)}
             placeholder="Same as MCQ"
-            className="w-full border border-gray-300 rounded-lg p-2.5 bg-white"
+            className="w-full border border-slate-300 rounded-lg p-2.5 bg-white"
           />
         </div>
         <div>
-          <label className="block text-gray-700 mb-1">TITA wrong marks</label>
+          <label className="block text-slate-700 mb-1">TITA wrong marks</label>
           <input
             name="titaIncorrectMarks"
             type="number"
             step="0.01"
             value={titaIncorrect}
             onChange={(e) => setTitaIncorrect(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg p-2.5 bg-white"
+            className="w-full border border-slate-300 rounded-lg p-2.5 bg-white"
           />
         </div>
       </div>
 
       {rows.length > 0 && (
         <div>
-          <label className="block text-gray-700 mb-1">Section order{sectional ? " and time" : ""}</label>
+          <label className="block text-slate-700 mb-1">Section order{sectional ? " and time" : ""}</label>
           <ul className="space-y-1.5">
             {rows.map((r, i) => (
-              <li key={r.name} className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1.5">
+              <li key={r.name} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2 py-1.5">
                 <div className="flex flex-col">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-[10px] leading-none px-1 disabled:opacity-30">▲</button>
                   <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-[10px] leading-none px-1 disabled:opacity-30">▼</button>
                 </div>
-                <span className="flex-1 truncate font-normal text-gray-800">{r.name}</span>
+                <span className="flex-1 truncate font-normal text-slate-800">{r.name}</span>
                 {sectional && (
                   <span className="flex items-center gap-1">
                     <input
@@ -157,15 +157,15 @@ export function PatternSettings({
                         const v = parseInt(e.target.value, 10);
                         setRows(rows.map((x, j) => (j === i ? { ...x, minutes: Number.isFinite(v) && v > 0 ? v : null } : x)));
                       }}
-                      className="w-16 border border-gray-300 rounded p-1 text-right"
+                      className="w-16 border border-slate-300 rounded p-1 text-right"
                     />
-                    <span className="font-normal text-gray-500">min</span>
+                    <span className="font-normal text-slate-500">min</span>
                   </span>
                 )}
               </li>
             ))}
           </ul>
-          {sectional && <p className="text-[11px] font-normal text-gray-500 mt-1">Total {totalSectionMinutes} minutes. Each section is timed separately.</p>}
+          {sectional && <p className="text-[11px] font-normal text-slate-500 mt-1">Total {totalSectionMinutes} minutes. Each section is timed separately.</p>}
         </div>
       )}
     </div>
