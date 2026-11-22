@@ -165,6 +165,11 @@ export async function finalizeAttempt(attemptId: string, status: "SUBMITTED" | "
   score += unattempted * paper.unattemptedMarks;
 
   const now = new Date();
+  // A practice session closed for the student (it has no time limit, so it may have sat open for days)
+  // ends at their last answer or visit, not when someone finally closed it.
+  if (!endedAt && status === "AUTO_SUBMITTED" && attempt.mode === "PRACTICE") {
+    endedAt = attempt.answers.reduce<Date>((last, a) => (a.answeredAt > last ? a.answeredAt : last), attempt.startedAt);
+  }
   const submittedAt = endedAt && endedAt.getTime() < now.getTime() && endedAt.getTime() >= attempt.startedAt.getTime() ? endedAt : now;
   const timeTaken = Math.max(0, Math.floor((submittedAt.getTime() - attempt.startedAt.getTime()) / 1000));
 

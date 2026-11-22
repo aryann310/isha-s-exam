@@ -72,6 +72,7 @@ async function dailyActivity(days: number, now: Date) {
            count(*) FILTER (WHERE "status" <> 'IN_PROGRESS')::int AS completed
     FROM "Attempt"
     WHERE "startedAt" >= ${since}
+      AND "userId" IN (SELECT "id" FROM "User" WHERE "role" = 'STUDENT')
     GROUP BY 1`;
   const byDay = new Map(rows.map((r) => [r.day, r]));
   const out: { key: string; label: string; started: number; completed: number }[] = [];
@@ -96,8 +97,10 @@ export async function getOverview() {
 
   // Everything in one parallel batch; the paper tables are small, so totals and titles are loaded whole.
   const [countRows, live, daily, completedMocks, recent, totals, paperTitles] = await Promise.all([
-    // All the headline counts in one round trip.
+    // All the headline counts in one round trip. Attempt counts cover student accounts only, so the
+    // admin's own test runs don't inflate them.
     prisma.$queryRaw<Record<string, number>[]>`
+      WITH sa AS (SELECT a.* FROM "Attempt" a JOIN "User" u ON u."id" = a."userId" WHERE u."role" = 'STUDENT')
       SELECT
         (SELECT count(*) FROM "User" WHERE "role" = 'STUDENT')::int AS "students",
         (SELECT count(*) FROM "User" WHERE "role" = 'STUDENT' AND "isActive")::int AS "activeStudents",
@@ -105,15 +108,15 @@ export async function getOverview() {
         (SELECT count(*) FROM "Paper" p JOIN "Exam" e ON e."id" = p."examId" WHERE p."isActive" AND e."isActive")::int AS "publishedPapers",
         (SELECT count(*) FROM "Question")::int AS "questions",
         (SELECT count(*) FROM "Exam")::int AS "exams",
-        (SELECT count(*) FROM "Attempt")::int AS "attempts",
-        (SELECT count(*) FROM "Attempt" WHERE "status" IN ('SUBMITTED', 'AUTO_SUBMITTED'))::int AS "completed",
-        (SELECT count(*) FROM "Attempt" WHERE "startedAt" >= ${d7})::int AS "started7",
-        (SELECT count(*) FROM "Attempt" WHERE "startedAt" >= ${d14} AND "startedAt" < ${d7})::int AS "startedPrev7",
-        (SELECT count(DISTINCT "userId") FROM "Attempt" WHERE "startedAt" >= ${d30})::int AS "activeStudents30"`,
+        (SELECT count(*) FROM sa)::int AS "attempts",
+        (SELECT count(*) FROM sa WHERE "status" IN ('SUBMITTED', 'AUTO_SUBMITTED'))::int AS "completed",
+        (SELECT count(*) FROM sa WHERE "startedAt" >= ${d7})::int AS "started7",
+        (SELECT count(*) FROM sa WHERE "startedAt" >= ${d14} AND "startedAt" < ${d7})::int AS "startedPrev7",
+        (SELECT count(DISTINCT "userId") FROM sa WHERE "startedAt" >= ${d30})::int AS "activeStudents30"`,
     countLive(now),
     dailyActivity(30, now),
     prisma.attempt.findMany({
-      where: { status: { in: COMPLETED }, mode: "MOCK" },
+      where: { status: { in: COMPLETED }, mode: "MOCK", user: { role: "STUDENT" } },
       select: { paperId: true, score: true, accuracy: true, timeTaken: true },
     }),
     prisma.attempt.findMany({
@@ -170,6 +173,8 @@ export async function getAnalytics(filter: AnalyticsFilter) {
   const now = new Date();
   const mode = filter.mode ?? "MOCK";
   const base: Prisma.AttemptWhereInput = {
+    // Student accounts only: an admin trying out a paper is not student performance.
+    user: { role: "STUDENT" },
     ...(mode !== "ALL" ? { mode } : {}),
     ...(filter.days ? { startedAt: { gte: new Date(now.getTime() - filter.days * 86_400_000) } } : {}),
   };

@@ -54,8 +54,12 @@ export function formatAgo(from: DateLike, now: number): string {
   return `${Math.floor(sec / 86400)} d ago`;
 }
 
-export const formatPercent = (v: number | null | undefined, digits = 0) =>
-  v === null || v === undefined || !Number.isFinite(v) ? "—" : `${v.toFixed(digits)}%`;
+export function formatPercent(v: number | null | undefined, digits = 0): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  const s = v.toFixed(digits);
+  // -0.4 rounds to "-0"; show it as 0 instead.
+  return `${Number(s) === 0 ? (0).toFixed(digits) : s}%`;
+}
 
 /** Marks: drops trailing .0 and shows at most two decimals. */
 export const formatMarks = (v: number | null | undefined) =>

@@ -26,7 +26,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Analytics" description="Scores are percentages of each paper's maximum marks. Only completed attempts count." />
+      <PageHeader title="Analytics" description="Student accounts only (admin test runs are left out). Scores are percentages of each paper's maximum marks; only completed attempts count." />
 
       <FilterForm className="mb-6 flex flex-wrap items-center gap-2">
         <select name="paper" defaultValue={filter.paperId ?? ""} className={`${filterFieldCls} min-w-64`}>

@@ -21,7 +21,7 @@ export default async function AdminOverview() {
     <>
       <PageHeader
         title="Overview"
-        description="How the portal is being used, at a glance."
+        description="How students are using the portal. Admin test runs are left out of the numbers."
         actions={
           <>
             <Link href="/admin/papers" className={btnCls.secondary}><Plus className="size-4" /> New paper</Link>
