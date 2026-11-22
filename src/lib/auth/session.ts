@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 function getKey() {
   const secretKey = process.env.SESSION_SECRET || "default_super_secret_key_for_development";
@@ -45,12 +46,26 @@ export async function createSession(userId: string, role: string, username?: str
   });
 }
 
-export async function getSession() {
+/**
+ * The signed-in user, re-checked against the database on every request (cached for the request):
+ * a deleted or deactivated account loses access at once, and the role always comes from the database,
+ * never from the cookie alone. The middleware only checks the signature; this is the real gate.
+ */
+export const getSession = cache(async () => {
   const cookieStore = await cookies();
-  const session = cookieStore.get("session")?.value;
-  if (!session) return null;
-  return await decrypt(session);
-}
+  const token = cookieStore.get("session")?.value;
+  if (!token) return null;
+  const payload = await decrypt(token);
+  if (!payload || typeof payload.userId !== "string") return null;
+  // Imported lazily so the middleware, which only needs `decrypt`, doesn't bundle the database client.
+  const { prisma } = await import("@/lib/prisma");
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { id: true, role: true, isActive: true, username: true, name: true },
+  });
+  if (!user || !user.isActive) return null;
+  return { ...payload, userId: user.id, role: user.role, username: user.username || user.name, name: user.name };
+});
 
 export async function deleteSession() {
   const cookieStore = await cookies();

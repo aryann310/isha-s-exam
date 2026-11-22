@@ -25,25 +25,35 @@ export async function startExamAction(formData: FormData) {
     throw new Error("Paper not found");
   }
 
-  // Resume an attempt that is already running instead of starting a second one.
-  const existingAttempt = await prisma.attempt.findFirst({
-    where: { userId: session.userId as string, paperId: paper.id, status: "IN_PROGRESS" },
-  });
-  if (existingAttempt) {
-    redirect(`/exam/${existingAttempt.id}`);
+  // A paper without questions would leave the student on an empty screen until the timer ran out.
+  const questionCount = await prisma.question.count({ where: { paperId: paper.id } });
+  if (questionCount === 0) {
+    redirect(`/papers/${paper.id}`);
   }
 
   if (mode === "MOCK" && formData.get("acceptInstructions") !== "on") {
-    redirect(`/papers/${paper.id}/instructions`);
+    // Resume a running mock straight away rather than showing the instructions again.
+    const running = await prisma.attempt.findFirst({
+      where: { userId: session.userId as string, paperId: paper.id, status: "IN_PROGRESS", mode: "MOCK" },
+      select: { id: true },
+    });
+    redirect(running ? `/exam/${running.id}` : `/papers/${paper.id}/instructions`);
   }
 
+  const userId = session.userId as string;
   const sectionOrder = formData.getAll("sectionOrder").map(String).filter(Boolean);
-  const attempt = await createAttempt({
-    userId: session.userId as string,
-    paper,
-    mode,
-    sectionOrder: sectionOrder.length ? sectionOrder : null,
-  });
+  // One running attempt per student, paper and mode. The advisory lock makes a double click (two
+  // requests at once) resume the same attempt instead of creating two.
+  const attemptId = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${userId}:${paper.id}:${mode}`}))`;
+    const existing = await tx.attempt.findFirst({
+      where: { userId, paperId: paper.id, status: "IN_PROGRESS", mode },
+      select: { id: true },
+    });
+    if (existing) return existing.id;
+    const created = await createAttempt({ userId, paper, mode, sectionOrder: sectionOrder.length ? sectionOrder : null }, tx);
+    return created.id;
+  }, { timeout: 20_000, maxWait: 10_000 });
 
-  redirect(`/exam/${attempt.id}`);
+  redirect(`/exam/${attemptId}`);
 }

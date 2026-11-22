@@ -4,7 +4,8 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { createAttempt, finalizeAttempt, freshAttemptState } from "@/server/attempts";
+import { Prisma } from "@prisma/client";
+import { createAttempt, finalizeAttempt, freshAttemptState, rescorePaper } from "@/server/attempts";
 import { PATTERN_IDS, isAnswerCorrect, parseSectionConfig } from "@/lib/exam-patterns";
 import { parseQuestionOptions, questionFingerprint } from "@/lib/parse-markdown-questions";
 import {
@@ -210,14 +211,25 @@ export async function deleteExamAction(examId: string) {
 }
 
 // Papers
+/** Duration and marks checks shared by create and update; returns an error message or null. */
+function checkPaperNumbers(n: { durationMinutes: number; correctMarks: number; incorrectMarks: number; unattemptedMarks: number; titaCorrectMarks: number | null; titaIncorrectMarks: number }): string | null {
+  if (!Number.isFinite(n.durationMinutes) || n.durationMinutes < 1 || n.durationMinutes > 600) return "Duration must be between 1 and 600 minutes.";
+  if (!(n.correctMarks > 0) || n.correctMarks > 100) return "Marks for a correct answer must be more than 0 (and at most 100).";
+  if (n.incorrectMarks > 0 || n.incorrectMarks < -100) return "Marks for a wrong answer must be 0 or negative.";
+  if (n.unattemptedMarks > 0 || n.unattemptedMarks < -100) return "Marks for an unanswered question must be 0 or negative.";
+  if (n.titaCorrectMarks !== null && (!(n.titaCorrectMarks > 0) || n.titaCorrectMarks > 100)) return "Marks for a correct typed answer must be more than 0.";
+  if (n.titaIncorrectMarks > 0 || n.titaIncorrectMarks < -100) return "Marks for a wrong typed answer must be 0 or negative.";
+  return null;
+}
+
 export async function createPaperAction(formData: FormData) {
   await requireAdmin();
 
   const examId = (formData.get("examId") as string)?.trim();
-  if (!examId) throw new Error("Target examination is required");
+  if (!examId) return { success: false, error: "Choose the exam this paper belongs to." };
 
   const title = (formData.get("title") as string)?.trim();
-  if (!title) throw new Error("Paper title is required");
+  if (!title) return { success: false, error: "Enter a paper title." };
 
   const year = parseInt(formData.get("year") as string, 10) || new Date().getFullYear();
   const shift = (formData.get("shift") as string)?.trim() || null;
@@ -232,6 +244,9 @@ export async function createPaperAction(formData: FormData) {
   const unattemptedMarks = isNaN(parsedUnattempted) ? 0 : parsedUnattempted;
   const description = (formData.get("description") as string)?.trim() || null;
   const isActive = formData.get("isActive") === "false" ? false : true;
+  const pattern = readPatternFields(formData);
+  const bad = checkPaperNumbers({ durationMinutes, correctMarks, incorrectMarks, unattemptedMarks, titaCorrectMarks: pattern.titaCorrectMarks, titaIncorrectMarks: pattern.titaIncorrectMarks });
+  if (bad) return { success: false, error: bad };
 
   await prisma.paper.create({
     data: {
@@ -246,7 +261,7 @@ export async function createPaperAction(formData: FormData) {
       unattemptedMarks,
       description,
       isActive,
-      ...readPatternFields(formData),
+      ...pattern,
     },
   });
 
@@ -254,21 +269,18 @@ export async function createPaperAction(formData: FormData) {
   safeRevalidate("/admin/exams");
   safeRevalidate("/admin/papers");
   safeRevalidate("/exams");
+  return { success: true };
 }
 
 export async function updatePaperAction(formData: FormData) {
   await requireAdmin();
 
   const paperId = formData.get("paperId") as string;
-  if (!paperId) {
-    throw new Error("Paper ID is required");
-  }
+  if (!paperId) return { success: false, error: "Paper not found." };
 
   const examId = (formData.get("examId") as string) || undefined;
   const title = (formData.get("title") as string)?.trim();
-  if (!title) {
-    throw new Error("Paper title is required");
-  }
+  if (!title) return { success: false, error: "Enter a paper title." };
 
   const year = parseInt(formData.get("year") as string, 10) || new Date().getFullYear();
   const shift = (formData.get("shift") as string)?.trim() || null;
@@ -277,6 +289,14 @@ export async function updatePaperAction(formData: FormData) {
   const incorrectMarks = parseFloat(formData.get("incorrectMarks") as string);
   const unattemptedMarks = parseFloat(formData.get("unattemptedMarks") as string);
   const description = (formData.get("description") as string)?.trim() || null;
+  const pattern = readPatternFields(formData);
+  const marks = {
+    correctMarks: isNaN(correctMarks) ? 4 : correctMarks,
+    incorrectMarks: isNaN(incorrectMarks) ? -1 : incorrectMarks,
+    unattemptedMarks: isNaN(unattemptedMarks) ? 0 : unattemptedMarks,
+  };
+  const bad = checkPaperNumbers({ durationMinutes, ...marks, titaCorrectMarks: pattern.titaCorrectMarks, titaIncorrectMarks: pattern.titaIncorrectMarks });
+  if (bad) return { success: false, error: bad };
 
   await prisma.paper.update({
     where: { id: paperId },
@@ -286,18 +306,18 @@ export async function updatePaperAction(formData: FormData) {
       year,
       shift,
       durationSeconds: durationMinutes * 60,
-      correctMarks: isNaN(correctMarks) ? 4 : correctMarks,
-      incorrectMarks: isNaN(incorrectMarks) ? -1 : incorrectMarks,
-      unattemptedMarks: isNaN(unattemptedMarks) ? 0 : unattemptedMarks,
+      ...marks,
       description,
-      ...readPatternFields(formData),
+      ...pattern,
     },
   });
+  // Marks may have changed: keep stored results in line with the paper's scoring.
+  const rescored = await rescorePaper(paperId);
 
   safeRevalidate("/admin");
   safeRevalidate("/admin/papers");
   safeRevalidate("/exams");
-  return { success: true };
+  return { success: true, rescored };
 }
 
 export async function togglePaperStatusAction(paperId: string, isActive: boolean) {
@@ -378,6 +398,9 @@ export async function createQuestionAction(formData: FormData) {
   const questionType = formData.get("questionType") === "TITA" ? "TITA" : "MCQ";
   const invalid = await checkQuestionInput(paperId, questionNumber, correctAnswer, null, questionType);
   if (invalid) return { success: false, error: invalid };
+  if (questionType === "MCQ" && Object.values(optionsObj).some((o) => !o || !o.trim())) {
+    return { success: false, error: "A multiple-choice question needs text for all four options." };
+  }
 
   await prisma.question.create({
     data: {
@@ -400,6 +423,8 @@ export async function createQuestionAction(formData: FormData) {
     where: { id: paperId },
     data: { totalQuestions: count },
   });
+  // Completed attempts now have one more unanswered question.
+  await rescorePaper(paperId);
 
   safeRevalidate("/admin");
   safeRevalidate("/admin/questions");
@@ -458,6 +483,9 @@ export async function updateQuestionAction(formData: FormData) {
       difficulty,
     },
   });
+  // A corrected key or changed question type changes scores: re-score finished attempts now.
+  const rescored =
+    existing.correctAnswer !== correctAnswer || existing.questionType !== questionType ? await rescorePaper(existing.paperId) : 0;
 
   safeRevalidate("/admin");
   safeRevalidate("/admin/questions");
@@ -465,7 +493,7 @@ export async function updateQuestionAction(formData: FormData) {
   if (existing?.paperId) {
     safeRevalidate(`/papers/${existing.paperId}`);
   }
-  return { success: true };
+  return { success: true, rescored };
 }
 
 export async function deleteQuestionAction(questionId: string) {
@@ -487,6 +515,7 @@ export async function deleteQuestionAction(questionId: string) {
       data: { totalQuestions: count },
     });
   });
+  await rescorePaper(paperId);
 
   safeRevalidate("/admin");
   safeRevalidate("/admin/questions");
@@ -653,6 +682,9 @@ export async function bulkImportQuestionsAction(
     { maxWait: 15_000, timeout: 120_000 }
   );
 
+  // Imported or replaced questions change how finished attempts score.
+  await rescorePaper(paperId);
+
   safeRevalidate("/admin");
   safeRevalidate("/admin/questions");
   safeRevalidate("/admin/papers");
@@ -661,33 +693,59 @@ export async function bulkImportQuestionsAction(
 }
 
 // User Management
-export async function createStudentAction(formData: FormData) {
+export type StudentFormState = { ok?: boolean; error?: string; message?: string };
+
+/** Creates a student. Returns errors as values (production builds hide thrown messages). */
+export async function createStudentAction(_prev: StudentFormState, formData: FormData): Promise<StudentFormState> {
   await requireAdmin();
 
-  const name = formData.get("name") as string;
-  const email = (formData.get("email") as string).toLowerCase().trim();
-  const password = formData.get("password") as string;
+  const name = String(formData.get("name") ?? "").trim().replace(/\s+/g, " ");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  let username = String(formData.get("username") ?? "").trim();
+  if (!username) username = email.split("@")[0] ?? "";
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    throw new Error("User with this email already exists");
-  }
+  if (name.length < 2 || name.length > 80) return { error: "Enter the student's full name (2–80 characters)." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email address." };
+  if (!/^[A-Za-z0-9._-]{3,32}$/.test(username)) return { error: "Username must be 3–32 letters, numbers, dots, dashes or underscores." };
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password.trim() !== password) return { error: "Password can't start or end with a space." };
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  await prisma.user.create({
-    data: {
-      name,
-      email,
-      passwordHash,
-      role: "STUDENT",
-    },
+  const clash = await prisma.user.findFirst({
+    where: { OR: [{ email }, { username: { equals: username, mode: "insensitive" } }] },
+    select: { email: true },
   });
+  if (clash) return { error: clash.email === email ? "A user with this email already exists." : `The username "${username}" is already taken.` };
 
+  try {
+    await prisma.user.create({
+      data: { name, email, username, passwordHash: await bcrypt.hash(password, 10), role: "STUDENT" },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return { error: "That email or username was just taken. Try another." };
+    throw e;
+  }
+  safeRevalidate("/admin/users");
   safeRevalidate("/admin");
+  return { ok: true, message: `Added ${name}. They sign in with the username "${username}" or their email.` };
 }
 
-export async function deleteStudentAction(userId: string) {
+/** Revokes or restores a student's access without deleting their history; takes effect immediately. */
+export async function setStudentActiveAction(userId: string, active: boolean): Promise<{ ok: boolean; error?: string }> {
   await requireAdmin();
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!user) return { ok: false, error: "That account no longer exists." };
+  if (user.role !== "STUDENT") return { ok: false, error: "Admin accounts can't be changed here." };
+  await prisma.user.update({ where: { id: userId }, data: { isActive: active } });
+  safeRevalidate("/admin/users");
+  return { ok: true };
+}
+
+export async function deleteStudentAction(userId: string): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!user) return { ok: false, error: "That account no longer exists." };
+  if (user.role !== "STUDENT") return { ok: false, error: "Admin accounts can't be deleted here." };
   await prisma.$transaction(async (tx) => {
     const attempts = await tx.attempt.findMany({ where: { userId }, select: { id: true } });
     const attemptIds = attempts.map((a) => a.id);
@@ -698,6 +756,8 @@ export async function deleteStudentAction(userId: string) {
     await tx.user.delete({ where: { id: userId } });
   });
   safeRevalidate("/admin");
+  safeRevalidate("/admin/users");
+  return { ok: true };
 }
 
 // Live Proctoring & Master Control Actions
@@ -722,6 +782,10 @@ export async function adminStartExamForStudentAction(
   customDurationMinutes?: number
 ) {
   await requireAdmin();
+  if (mode !== "PRACTICE" && mode !== "MOCK") throw new Error("Invalid mode");
+  if (customDurationMinutes !== undefined && (!Number.isInteger(customDurationMinutes) || customDurationMinutes < 1 || customDurationMinutes > 600)) {
+    throw new Error("Duration must be 1–600 minutes");
+  }
 
   const [user, paper] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),

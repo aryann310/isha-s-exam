@@ -27,7 +27,7 @@ export default async function PaperInfoPage({
         { id: param },
         { title: { contains: param, mode: "insensitive" } },
       ],
-      ...(isAdmin ? {} : { isActive: true }),
+      ...(isAdmin ? {} : { isActive: true, exam: { isActive: true } }),
     },
     include: {
       exam: true,
@@ -40,7 +40,7 @@ export default async function PaperInfoPage({
   // Smart fallback: match by word tokens (e.g. "snap", "2024", "pyq")
   if (!paper && words.length > 0) {
     const allPapers = await prisma.paper.findMany({
-      where: isAdmin ? {} : { isActive: true },
+      where: isAdmin ? {} : { isActive: true, exam: { isActive: true } },
       include: {
         exam: true,
         questions: { select: { section: true, questionNumber: true } },

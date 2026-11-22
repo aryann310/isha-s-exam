@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SAVE_GRACE_SECONDS } from "@/lib/attempt-timing";
 import { isAnswerCorrect, isAnswered } from "@/lib/exam-patterns";
-import { finalizeAttempt, loadAttemptContext, questionInOpenSection } from "@/server/attempts";
+import { finalizeAttempt, loadAttemptContext, questionInOpenSection, whileAttemptOpen } from "@/server/attempts";
 
 type Fail = { ok: false; error: string; finished?: boolean };
 
@@ -18,7 +18,7 @@ function cleanResponse(questionType: string, answer: string | null): string | nu
   if (answer === null) return null;
   const a = String(answer).trim();
   if (!a) return null;
-  if (questionType === "TITA") return a.length <= 40 && /^[0-9a-zA-Z.\-/: ]+$/.test(a) ? a : undefined;
+  if (questionType === "TITA") return a.length <= 40 && /^[0-9a-zA-Z.,\-/: ]+$/.test(a) ? a : undefined;
   const k = a.toUpperCase();
   return ["A", "B", "C", "D"].includes(k) ? k : undefined;
 }
@@ -41,15 +41,32 @@ export async function saveAnswerAction(attemptId: string, questionId: string, se
 
   const answer = cleanResponse(question.questionType, selectedAnswer);
   if (!answer) throw new Error("Invalid answer");
-  const isCorrect = isAnswerCorrect(question.questionType, question.correctAnswer, answer);
 
-  await prisma.attemptAnswer.upsert({
-    where: { attemptId_questionId: { attemptId, questionId } },
-    update: { selectedAnswer: answer, isCorrect, answeredAt: new Date() },
-    create: { attemptId, questionId, selectedAnswer: answer, isCorrect },
+  // The solution is shown after the first answer, so that first answer is final: a second call
+  // (e.g. re-sent with the revealed key) returns the original result instead of overwriting it.
+  let result: { selected: string; isCorrect: boolean } | null = null;
+  const open = await whileAttemptOpen(attemptId, async (tx) => {
+    const existing = await tx.attemptAnswer.findUnique({
+      where: { attemptId_questionId: { attemptId, questionId } },
+      select: { selectedAnswer: true },
+    });
+    if (existing && isAnswered(existing.selectedAnswer)) {
+      const prev = String(existing.selectedAnswer);
+      result = { selected: prev, isCorrect: isAnswerCorrect(question.questionType, question.correctAnswer, prev) };
+      return;
+    }
+    const isCorrect = isAnswerCorrect(question.questionType, question.correctAnswer, answer);
+    await tx.attemptAnswer.upsert({
+      where: { attemptId_questionId: { attemptId, questionId } },
+      update: { selectedAnswer: answer, isCorrect, answeredAt: new Date() },
+      create: { attemptId, questionId, selectedAnswer: answer, isCorrect },
+    });
+    result = { selected: answer, isCorrect };
   });
+  if (!open || !result) throw new Error("Invalid attempt");
+  const final = result as { selected: string; isCorrect: boolean };
 
-  return { isCorrect, correctAnswer: question.correctAnswer, explanation: question.explanation };
+  return { isCorrect: final.isCorrect, selectedAnswer: final.selected, correctAnswer: question.correctAnswer, explanation: question.explanation };
 }
 
 // ---------------------------------------------------------------------------
@@ -85,11 +102,14 @@ export async function saveResponseAction(
   const markedForReview = !!response.markedForReview;
   const isCorrect = isAnswered(answer) ? isAnswerCorrect(question.questionType, question.correctAnswer, answer) : null;
 
-  await prisma.attemptAnswer.upsert({
-    where: { attemptId_questionId: { attemptId, questionId } },
-    update: { selectedAnswer: answer, isCorrect, markedForReview, answeredAt: new Date() },
-    create: { attemptId, questionId, selectedAnswer: answer, isCorrect, markedForReview },
+  const saved = await whileAttemptOpen(attemptId, async (tx) => {
+    await tx.attemptAnswer.upsert({
+      where: { attemptId_questionId: { attemptId, questionId } },
+      update: { selectedAnswer: answer, isCorrect, markedForReview, answeredAt: new Date() },
+      create: { attemptId, questionId, selectedAnswer: answer, isCorrect, markedForReview },
+    });
   });
+  if (!saved) return { ok: false, error: "This test has ended.", finished: true };
   return { ok: true };
 }
 
