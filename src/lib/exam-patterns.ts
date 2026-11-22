@@ -44,7 +44,7 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
   CAT: {
     id: "CAT",
     label: "CAT",
-    summary: "3 sections (VARC, DILR, QA), 40 minutes each, fixed order, no switching between sections. +3 / −1 for MCQs, no negative marking for TITA.",
+    summary: "3 sections (VARC, DILR, QA), each with its own time limit, fixed order, no switching between sections. +3 / −1 for MCQs, no negative marking for TITA.",
     timing: "sectional",
     sectionOrder: "fixed",
     canSubmitSectionEarly: false,
@@ -58,7 +58,7 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
       { name: "Quantitative Ability", aliases: ["qa", "quant"], minutes: 40 },
     ],
     instructions: [
-      "The sections are taken in the fixed order shown above, each with its own time limit (40 minutes each in the actual CAT).",
+      "The sections are taken in the fixed order shown above, each with its own time limit as listed in the table.",
       "You cannot move to the next section before the current section's time is over, and you cannot return to a section once it ends.",
       "Some questions are multiple choice; others need you to type the answer (TITA) using the on-screen keypad.",
       "Each correct answer earns 3 marks. A wrong multiple-choice answer loses 1 mark. There is no negative marking for TITA questions.",
