@@ -6,7 +6,17 @@ import { EXAM_PATTERNS, PATTERN_IDS, resolvePaperSections, type ExamPatternId } 
 interface SectionRow {
   name: string;
   minutes: number | null;
+  /** Section's own marks for multiple-choice questions; null = the paper's marks. */
+  correctMarks?: number | null;
+  incorrectMarks?: number | null;
 }
+
+const numberOrNull = (raw: string, positive: boolean): number | null => {
+  if (raw.trim() === "") return null;
+  const v = parseFloat(raw);
+  if (!Number.isFinite(v)) return null;
+  return positive ? (v > 0 ? v : null) : v <= 0 ? v : null;
+};
 
 function sectionsFor(pattern: ExamPatternId, names: string[], durationMinutes: number): SectionRow[] {
   const resolved = resolvePaperSections(
@@ -67,7 +77,15 @@ export function PatternSettings({
     setPattern(next);
     if (questionSections.length) {
       const names = rows.length ? rows.map((r) => r.name) : questionSections;
-      setRows(sectionsFor(next, names, EXAM_PATTERNS[next].totalMinutes));
+      // Keep any section marks already set.
+      const own = new Map(rows.map((r) => [r.name, r]));
+      setRows(
+        sectionsFor(next, names, EXAM_PATTERNS[next].totalMinutes).map((r) => ({
+          ...r,
+          correctMarks: own.get(r.name)?.correctMarks ?? null,
+          incorrectMarks: own.get(r.name)?.incorrectMarks ?? null,
+        }))
+      );
     }
   };
 
@@ -80,8 +98,17 @@ export function PatternSettings({
   };
 
   const sectionConfig = rows.length
-    ? JSON.stringify(rows.map((r) => ({ name: r.name, durationSeconds: sectional && r.minutes ? r.minutes * 60 : null })))
+    ? JSON.stringify(
+        rows.map((r) => ({
+          name: r.name,
+          durationSeconds: sectional && r.minutes ? r.minutes * 60 : null,
+          ...(r.correctMarks != null ? { correctMarks: r.correctMarks } : {}),
+          ...(r.incorrectMarks != null ? { incorrectMarks: r.incorrectMarks } : {}),
+        }))
+      )
     : "";
+  const setRowMarks = (i: number, field: "correctMarks" | "incorrectMarks", raw: string) =>
+    setRows(rows.map((x, j) => (j === i ? { ...x, [field]: numberOrNull(raw, field === "correctMarks") } : x)));
   const totalSectionMinutes = rows.reduce((t, r) => t + (r.minutes ?? 0), 0);
 
   return (
@@ -162,10 +189,33 @@ export function PatternSettings({
                     <span className="font-normal text-slate-500">min</span>
                   </span>
                 )}
+                <span className="flex items-center gap-1" title="Marks for this section's multiple-choice questions. Leave blank to use the paper's marks.">
+                  <input
+                    type="number"
+                    step="0.01"
+                    defaultValue={r.correctMarks ?? ""}
+                    onChange={(e) => setRowMarks(i, "correctMarks", e.target.value)}
+                    placeholder="+"
+                    aria-label={`${r.name}: marks for a correct answer`}
+                    className="w-14 border border-slate-300 rounded p-1 text-right"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    defaultValue={r.incorrectMarks ?? ""}
+                    onChange={(e) => setRowMarks(i, "incorrectMarks", e.target.value)}
+                    placeholder="−"
+                    aria-label={`${r.name}: marks for a wrong answer`}
+                    className="w-14 border border-slate-300 rounded p-1 text-right"
+                  />
+                </span>
               </li>
             ))}
           </ul>
           {sectional && <p className="text-[11px] font-normal text-slate-500 mt-1">Total {totalSectionMinutes} minutes. Each section is timed separately.</p>}
+          <p className="text-[11px] font-normal text-slate-500 mt-1">
+            The two small boxes on each row set that section&apos;s own marks (correct / wrong) for multiple-choice questions. Leave them blank to use the paper&apos;s marks below.
+          </p>
         </div>
       )}
     </div>

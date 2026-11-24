@@ -5,7 +5,7 @@ import { ExamEngine } from "@/components/exam/exam-engine";
 import { MockExamEngine, type MockQuestion, type MockSection } from "@/components/exam/mock-exam-engine";
 import { paletteStatus, type PaletteStatus } from "@/components/exam/palette-symbol";
 import { loadAttemptContext } from "@/server/attempts";
-import { getPattern, patternInstructions, parseQuestionTypeSafe, sectionKey } from "@/lib/exam-patterns";
+import { getPattern, marksFor, patternInstructions, parseQuestionTypeSafe, sectionKey } from "@/lib/exam-patterns";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +67,7 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
       type: parseQuestionTypeSafe(q.questionType),
       text: q.questionText,
       options: q.questionType === "TITA" ? {} : parseQuestionOptions(q.options),
+      marks: marksFor(ctx.paper, q.questionType, q.section),
     }));
 
   const initialResponses = Object.fromEntries(visible.map((q) => [q.id, response(q.id)]));
@@ -88,10 +89,6 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
       canSubmitEarly={pattern.canSubmitEarly}
       linear={pattern.navigation === "linear"}
       calculator={pattern.calculator}
-      marks={{
-        MCQ: { correct: p.correctMarks, incorrect: p.incorrectMarks },
-        TITA: { correct: p.titaCorrectMarks ?? p.correctMarks, incorrect: p.titaIncorrectMarks },
-      }}
       instructions={patternInstructions(pattern)}
       sections={sections}
       questions={visible}

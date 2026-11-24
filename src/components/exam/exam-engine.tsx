@@ -6,7 +6,7 @@ import type { Attempt, Paper, Question, AttemptAnswer } from "@prisma/client";
 import { saveAnswerAction, submitExamAction } from "@/server/actions/engine";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
-import { isAnswerCorrect } from "@/lib/exam-patterns";
+import { isAnswerCorrect, marksFor } from "@/lib/exam-patterns";
 
 type OptionType = { [key: string]: string };
 
@@ -257,8 +257,8 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                 )}
               </div>
               <div className="text-xs text-gray-500 font-medium">
-                Marking: <span className="text-emerald-600 font-bold">+{paper.correctMarks}</span> /{" "}
-                <span className="text-rose-600 font-bold">{paper.incorrectMarks}</span>
+                Marking: <span className="text-emerald-600 font-bold">+{marksFor(paper, currentQuestion.questionType, currentQuestion.section).correct}</span> /{" "}
+                <span className="text-rose-600 font-bold">{marksFor(paper, currentQuestion.questionType, currentQuestion.section).incorrect}</span>
               </div>
             </div>
 
@@ -368,7 +368,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                   </span>
                 ) : (
                   <span className="text-xs text-blue-700 font-bold">
-                    Option {answers[currentQuestion.id]} selected. Click CONFIRM ANSWER to reveal the solution.
+                    {currentQuestion.questionType === "TITA" ? "Answer" : "Option"} {answers[currentQuestion.id]} selected. Click CONFIRM ANSWER to reveal the solution.
                   </span>
                 )}
               </div>
@@ -391,12 +391,12 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                     <div className="text-sm text-gray-700 font-medium">
                       Your Answer:{" "}
                       <strong className="text-gray-950 font-bold">
-                        Option {answers[currentQuestion.id]}
+                        {currentQuestion.questionType === "TITA" ? "" : "Option "}{answers[currentQuestion.id]}
                       </strong>
                       {" • "}
                       Correct Answer:{" "}
                       <strong className="text-emerald-700 font-bold">
-                        Option {results[currentQuestion.id].correctAnswer}
+                        {currentQuestion.questionType === "TITA" ? results[currentQuestion.id].correctAnswer.split("|").join(" or ") : `Option ${results[currentQuestion.id].correctAnswer}`}
                       </strong>
                     </div>
                   </div>
