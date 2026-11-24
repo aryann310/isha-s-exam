@@ -135,7 +135,8 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
   SNAP: {
     id: "SNAP",
     label: "SNAP",
-    summary: "60 questions in 3 sections, 60 minutes in total, move freely between sections. +1 / −0.25.",
+    summary:
+      "SNAP 2026: 60 questions in 60 minutes, one timer, sections in any order (General English 10, Analytical & Logical Reasoning 20, Quantitative/DI/DS 20, Ethics, Morality & Values 10). +1, wrong answers lose 25%. Older papers keep their own year's sections, time and marks.",
     timing: "overall",
     sectionOrder: "fixed",
     canSubmitSectionEarly: true,
@@ -148,11 +149,14 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
       { name: "General English", aliases: ["english", "verbal"], minutes: 0 },
       { name: "Analytical & Logical Reasoning", aliases: ["analytical", "logical", "reasoning"], minutes: 0 },
       { name: "Quantitative, Data Interpretation & Data Sufficiency", aliases: ["quant", "data interpretation", "data sufficiency"], minutes: 0 },
+      { name: "Ethics, Morality and Values", aliases: ["ethics", "morality", "values"], minutes: 0 },
     ],
+    // Rules from the official SNAP site (snaptest.org, SNAP 2026 test structure and guidelines).
     instructions: [
-      "There is one timer for the whole test and no time limit per section (60 minutes for 60 questions in the actual SNAP).",
-      "Use the section tabs at the top to move between sections at any time.",
-      "Each correct answer earns 1 mark. Each wrong answer loses 0.25 marks. Unanswered questions score 0.",
+      "SNAP is an objective test. The current SNAP (2026) has 60 questions in 60 minutes: General English 10, Analytical & Logical Reasoning 20, Quantitative, Data Interpretation & Data Sufficiency 20, and Ethics, Morality and Values 10. Older papers had different sections and lengths: this paper's own sections, time and marks are in the table above.",
+      "There is one timer for the whole test and no time limit per section. You may attempt the sections in any order: use the section tabs at the top to move between them at any time.",
+      "Each question has four options; choose the most appropriate one. A wrong answer costs 25% of that question's marks (−0.25 on a 1-mark question). Unanswered questions score 0.",
+      "Calculators are not allowed.",
     ],
   },
   CUSTOM: {
@@ -190,7 +194,16 @@ export interface PaperSection {
   name: string;
   /** Seconds; null for overall-timed patterns. */
   durationSeconds: number | null;
+  /**
+   * Marks for this section's multiple-choice questions when they differ from the paper's
+   * (e.g. SNAP 2015 Analytical & Logical Reasoning: +2 / -0.5). null = use the paper's marks.
+   */
+  correctMarks?: number | null;
+  incorrectMarks?: number | null;
 }
+
+const optionalMark = (v: unknown, positive: boolean): number | null =>
+  typeof v === "number" && Number.isFinite(v) && (positive ? v > 0 && v <= 100 : v <= 0 && v >= -100) ? v : null;
 
 /** Parses Paper.sectionConfig; returns null when absent or malformed. */
 export function parseSectionConfig(raw: string | null | undefined): PaperSection[] | null {
@@ -202,12 +215,32 @@ export function parseSectionConfig(raw: string | null | undefined): PaperSection
     for (const s of parsed) {
       if (!s || typeof s.name !== "string" || !s.name.trim()) return null;
       const d = s.durationSeconds;
-      out.push({ name: s.name.trim(), durationSeconds: typeof d === "number" && d > 0 ? Math.round(d) : null });
+      const section: PaperSection = { name: s.name.trim(), durationSeconds: typeof d === "number" && d > 0 ? Math.round(d) : null };
+      const correct = optionalMark(s.correctMarks, true);
+      const incorrect = optionalMark(s.incorrectMarks, false);
+      if (correct !== null) section.correctMarks = correct;
+      if (incorrect !== null) section.incorrectMarks = incorrect;
+      out.push(section);
     }
     return out.length ? out : null;
   } catch {
     return null;
   }
+}
+
+const configCache = new Map<string, PaperSection[] | null>();
+function cachedSectionConfig(raw: string | null | undefined): PaperSection[] | null {
+  if (!raw) return null;
+  if (!configCache.has(raw)) {
+    if (configCache.size > 500) configCache.clear();
+    configCache.set(raw, parseSectionConfig(raw));
+  }
+  return configCache.get(raw) ?? null;
+}
+
+/** True when some section of the paper has its own marks. */
+export function hasSectionMarks(paper: { sectionConfig?: string | null }): boolean {
+  return (cachedSectionConfig(paper.sectionConfig) ?? []).some((s) => s.correctMarks != null || s.incorrectMarks != null);
 }
 
 function presetMinutesFor(pattern: ExamPattern, sectionName: string, index: number): number | null {
@@ -241,7 +274,7 @@ export function resolvePaperSections(
   const configured = parseSectionConfig(paper.sectionConfig);
   const base: PaperSection[] = configured
     ? configured.map((s, i) => ({
-        name: s.name,
+        ...s,
         durationSeconds: sectional ? (s.durationSeconds ?? (presetMinutesFor(pattern, s.name, i) ?? 0) * 60) : null,
       }))
     : questionSections.map((name, i) => ({
@@ -307,13 +340,20 @@ export interface PaperMarks {
   unattemptedMarks: number;
   titaCorrectMarks: number | null;
   titaIncorrectMarks: number;
+  /** Needed for per-section marks; callers that score questions must include it. */
+  sectionConfig: string | null;
 }
 
-export function marksFor(paper: PaperMarks, questionType: string): { correct: number; incorrect: number } {
+/**
+ * Marks for one question. Typed-answer (TITA) questions use the paper's TITA marks; multiple-choice
+ * questions use their section's marks when the paper sets them, otherwise the paper's.
+ */
+export function marksFor(paper: PaperMarks, questionType: string, section?: string | null): { correct: number; incorrect: number } {
   if (questionType === "TITA") {
     return { correct: paper.titaCorrectMarks ?? paper.correctMarks, incorrect: paper.titaIncorrectMarks };
   }
-  return { correct: paper.correctMarks, incorrect: paper.incorrectMarks };
+  const own = cachedSectionConfig(paper.sectionConfig)?.find((s) => s.name === sectionKey(section));
+  return { correct: own?.correctMarks ?? paper.correctMarks, incorrect: own?.incorrectMarks ?? paper.incorrectMarks };
 }
 
 export function parseQuestionTypeSafe(value: string | null | undefined): QuestionType {

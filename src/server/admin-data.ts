@@ -20,6 +20,7 @@ const paperMarksSelect = {
   unattemptedMarks: true,
   titaCorrectMarks: true,
   titaIncorrectMarks: true,
+  sectionConfig: true,
 } as const;
 
 /** Highest possible score per paper and its question count. */
@@ -28,7 +29,8 @@ export async function paperTotals(paperIds?: string[]): Promise<Map<string, { ma
   const [papers, counts] = await Promise.all([
     prisma.paper.findMany({ where, select: paperMarksSelect }),
     prisma.question.groupBy({
-      by: ["paperId", "questionType"],
+      // Section too: some papers give a section its own marks.
+      by: ["paperId", "questionType", "section"],
       where: paperIds ? { paperId: { in: paperIds } } : undefined,
       _count: { _all: true },
     }),
@@ -39,7 +41,7 @@ export async function paperTotals(paperIds?: string[]): Promise<Map<string, { ma
     const p = marks.get(c.paperId);
     if (!p) continue;
     const cur = out.get(c.paperId) ?? { maxMarks: 0, questions: 0 };
-    cur.maxMarks += c._count._all * marksFor(p, c.questionType).correct;
+    cur.maxMarks += c._count._all * marksFor(p, c.questionType, c.section).correct;
     cur.questions += c._count._all;
     out.set(c.paperId, cur);
   }
@@ -328,12 +330,12 @@ async function paperDetail(
     let marks = 0;
     for (const q of qs) {
       const s = qStats.get(q.id)!;
-      const m = marksFor(paper, q.questionType);
+      const m = marksFor(paper, q.questionType, q.section);
       attempted += s.attempted;
       correct += s.correct;
       marks += s.correct * m.correct + (s.attempted - s.correct) * m.incorrect;
     }
-    const max = qs.reduce((t, q) => t + marksFor(paper, q.questionType).correct, 0);
+    const max = qs.reduce((t, q) => t + marksFor(paper, q.questionType, q.section).correct, 0);
     return {
       name: sec.name,
       questions: qs.length,
@@ -563,7 +565,7 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
       if (!q || !isAnswered(a.selectedAnswer)) continue;
       answered++;
       if (openSection && sectionKey(q.section) === openSection) sectionAnswered++;
-      const m = marksFor(paper, q.questionType);
+      const m = marksFor(paper, q.questionType, q.section);
       if (isAnswerCorrect(q.questionType, q.correctAnswer, a.selectedAnswer)) {
         correct++;
         score += m.correct;
@@ -572,7 +574,7 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
         score += m.incorrect;
       }
     }
-    const maxMarks = qs.reduce((t, q) => t + marksFor(paper, q.questionType).correct, 0);
+    const maxMarks = qs.reduce((t, q) => t + marksFor(paper, q.questionType, q.section).correct, 0);
 
     const session: LiveSession = {
       id: att.id,

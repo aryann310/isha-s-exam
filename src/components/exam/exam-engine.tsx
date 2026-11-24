@@ -6,7 +6,7 @@ import type { Attempt, Paper, Question, AttemptAnswer } from "@prisma/client";
 import { saveAnswerAction, submitExamAction } from "@/server/actions/engine";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
-import { isAnswerCorrect } from "@/lib/exam-patterns";
+import { isAnswerCorrect, marksFor } from "@/lib/exam-patterns";
 
 type OptionType = { [key: string]: string };
 
@@ -257,8 +257,8 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                 )}
               </div>
               <div className="text-xs text-gray-500 font-medium">
-                Marking: <span className="text-emerald-600 font-bold">+{paper.correctMarks}</span> /{" "}
-                <span className="text-rose-600 font-bold">{paper.incorrectMarks}</span>
+                Marking: <span className="text-emerald-600 font-bold">+{marksFor(paper, currentQuestion.questionType, currentQuestion.section).correct}</span> /{" "}
+                <span className="text-rose-600 font-bold">{marksFor(paper, currentQuestion.questionType, currentQuestion.section).incorrect}</span>
               </div>
             </div>
 

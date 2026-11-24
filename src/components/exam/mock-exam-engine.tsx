@@ -14,6 +14,8 @@ export interface MockQuestion {
   type: "MCQ" | "TITA";
   text: string;
   options: Record<string, string>;
+  /** Marks for this question (its type and section decide them). */
+  marks: { correct: number; incorrect: number };
 }
 
 export interface MockSection {
@@ -45,7 +47,6 @@ interface Props {
   /** One-way navigation (NMAT): answer each question in order, no going back. The server enforces it too. */
   linear: boolean;
   calculator: boolean;
-  marks: Record<"MCQ" | "TITA", { correct: number; incorrect: number }>;
   instructions: string[];
   sections: MockSection[];
   questions: MockQuestion[];
@@ -264,7 +265,7 @@ export function MockExamEngine(props: Props) {
     );
   }
 
-  const marks = props.marks[q.type];
+  const marks = q.marks;
   const optionKeys = Object.keys(q.options).filter((k) => q.options[k]?.trim());
 
   return (

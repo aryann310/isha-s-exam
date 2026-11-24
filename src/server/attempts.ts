@@ -145,7 +145,7 @@ export interface ScoreTotals {
   verdicts: Map<string, boolean>;
 }
 
-type ScorablePaper = PaperMarks & { questions: { id: string; questionType: string; correctAnswer: string }[] };
+type ScorablePaper = PaperMarks & { questions: { id: string; questionType: string; correctAnswer: string; section: string | null }[] };
 
 /** The single scoring rule used for submission and for re-scoring. Answered-and-marked responses count. */
 export function scoreResponses(paper: ScorablePaper, answers: { questionId: string; selectedAnswer: string | null }[]): ScoreTotals {
@@ -157,7 +157,7 @@ export function scoreResponses(paper: ScorablePaper, answers: { questionId: stri
   for (const ans of answers) {
     const q = byId.get(ans.questionId);
     if (!q || !isAnswered(ans.selectedAnswer)) continue;
-    const marks = marksFor(paper, q.questionType);
+    const marks = marksFor(paper, q.questionType, q.section);
     const ok = isAnswerCorrect(q.questionType, q.correctAnswer, ans.selectedAnswer);
     verdicts.set(q.id, ok);
     if (ok) {
@@ -181,7 +181,7 @@ export function scoreResponses(paper: ScorablePaper, answers: { questionId: stri
 }
 
 const scorablePaperInclude = {
-  paper: { include: { questions: { select: { id: true, questionType: true, correctAnswer: true } } } },
+  paper: { include: { questions: { select: { id: true, questionType: true, correctAnswer: true, section: true } } } },
   answers: true,
 } as const;
 

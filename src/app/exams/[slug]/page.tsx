@@ -2,6 +2,7 @@ import { getSession, deleteSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
+import { hasSectionMarks } from "@/lib/exam-patterns";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +141,9 @@ export default async function ExamPapersPage({
                     {paper.totalQuestions} Questions • {Math.round(paper.durationSeconds / 60)} Minutes • Marking:{" "}
                     <span className="font-bold text-emerald-600">+{paper.correctMarks}</span> /{" "}
                     <span className="font-bold text-rose-600">{paper.incorrectMarks}</span>
+                    {(hasSectionMarks(paper) || (paper.titaCorrectMarks != null && paper.titaCorrectMarks !== paper.correctMarks)) && (
+                      <span> (some questions carry more marks; see the instructions)</span>
+                    )}
                   </p>
                   {paper.description && (
                     <p className="text-xs text-gray-400 mt-1 line-clamp-1">

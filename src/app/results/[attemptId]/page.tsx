@@ -65,7 +65,7 @@ export default async function ResultPage({
     sectionStats[sec].total++;
 
     const ans = ansByQ[q.id];
-    const marks = marksFor(attempt.paper, q.questionType);
+    const marks = marksFor(attempt.paper, q.questionType, q.section);
     if (!ans || !isAnswered(ans.selectedAnswer)) {
       sectionStats[sec].unattempted++;
       sectionStats[sec].score += attempt.paper.unattemptedMarks;

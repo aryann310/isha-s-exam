@@ -3,11 +3,14 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { startExamAction } from "@/server/actions/exam";
-import { getPattern, patternInstructions, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
+import { getPattern, marksFor, patternInstructions, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
 import { PALETTE_LABELS, PALETTE_ORDER, PaletteSymbol } from "@/components/exam/palette-symbol";
 import { SectionOrderPicker } from "@/components/exam/section-order-picker";
 
 export const dynamic = "force-dynamic";
+
+const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
+const markText = (m: { correct: number; incorrect: number }) => `${signed(m.correct)} / ${signed(m.incorrect)}`;
 
 function permutations<T>(items: T[]): T[][] {
   if (items.length <= 1) return [items];
@@ -22,7 +25,7 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
 
   const paper = await prisma.paper.findFirst({
     where: { id: paperId, ...(isAdmin ? {} : { isActive: true, exam: { isActive: true } }) },
-    include: { exam: true, questions: { select: { section: true, questionNumber: true } } },
+    include: { exam: true, questions: { select: { section: true, questionNumber: true, questionType: true } } },
   });
   if (!paper) return notFound();
 
@@ -36,6 +39,19 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
   const sections = resolvePaperSections(paper, paper.questions);
   const counts = new Map<string, number>();
   for (const q of paper.questions) counts.set(sectionKey(q.section), (counts.get(sectionKey(q.section)) ?? 0) + 1);
+  // Marking per section (correct / wrong), with typed-answer questions listed separately when they differ.
+  const sectionMarks = new Map<string, string>();
+  let maxMarks = 0;
+  for (const s of sections) {
+    const qs = paper.questions.filter((q) => sectionKey(q.section) === s.name);
+    const mcq = qs.filter((q) => q.questionType !== "TITA");
+    const tita = qs.filter((q) => q.questionType === "TITA");
+    const parts: string[] = [];
+    if (mcq.length) parts.push(markText(marksFor(paper, "MCQ", s.name)));
+    if (tita.length) parts.push(`${mcq.length ? "typed answers " : ""}${markText(marksFor(paper, "TITA", s.name))}`);
+    sectionMarks.set(s.name, parts.join("; "));
+    for (const q of qs) maxMarks += marksFor(paper, q.questionType, q.section).correct;
+  }
   const sectional = pattern.timing === "sectional";
   const totalMinutes = sectional
     ? Math.round(sections.reduce((t, s) => t + (s.durationSeconds ?? 0), 0) / 60)
@@ -72,6 +88,7 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
                   <th className="border border-gray-300 px-3 py-2">Section</th>
                   <th className="border border-gray-300 px-3 py-2 w-28">Questions</th>
                   {sectional && <th className="border border-gray-300 px-3 py-2 w-28">Time</th>}
+                  <th className="border border-gray-300 px-3 py-2">Marks (correct / wrong)</th>
                 </tr>
               </thead>
               <tbody>
@@ -80,12 +97,14 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
                     <td className="border border-gray-300 px-3 py-2">{s.name}</td>
                     <td className="border border-gray-300 px-3 py-2">{counts.get(s.name) ?? 0}</td>
                     {sectional && <td className="border border-gray-300 px-3 py-2">{Math.round((s.durationSeconds ?? 0) / 60)} min</td>}
+                    <td className="border border-gray-300 px-3 py-2">{sectionMarks.get(s.name)}</td>
                   </tr>
                 ))}
                 <tr className="font-bold bg-gray-50">
                   <td className="border border-gray-300 px-3 py-2">Total</td>
                   <td className="border border-gray-300 px-3 py-2">{paper.questions.length}</td>
                   {sectional && <td className="border border-gray-300 px-3 py-2">{totalMinutes} min</td>}
+                  <td className="border border-gray-300 px-3 py-2">{maxMarks} marks</td>
                 </tr>
               </tbody>
             </table>

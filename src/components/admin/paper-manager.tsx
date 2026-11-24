@@ -633,6 +633,8 @@ export function PaperManager({
                 initialSections={resolvePaperSections(editingPaper, editingPaper.questions).map((s) => ({
                   name: s.name,
                   minutes: s.durationSeconds ? Math.round(s.durationSeconds / 60) : null,
+                  correctMarks: s.correctMarks ?? null,
+                  incorrectMarks: s.incorrectMarks ?? null,
                 }))}
               />
 
