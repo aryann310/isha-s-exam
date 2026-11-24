@@ -179,6 +179,7 @@ export function QuestionEditorForm({
     formData.append("optionB", options.B || "");
     formData.append("optionC", options.C || "");
     formData.append("optionD", options.D || "");
+    formData.append("optionE", options.E || "");
     formData.append("questionType", questionType);
     formData.append("correctAnswer", correctAnswer.trim());
     formData.append("explanation", explanation);
@@ -284,7 +285,7 @@ export function QuestionEditorForm({
           )}
 
           <div className="space-y-2 pt-2">
-            {questionType !== "TITA" && Object.entries(options).map(([key, val]) => (
+            {questionType !== "TITA" && Object.entries(options).filter(([key, val]) => key !== "E" || val?.trim()).map(([key, val]) => (
               <div
                 key={key}
                 className={`p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
@@ -449,7 +450,7 @@ export function QuestionEditorForm({
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
-                  ["MCQ", "Multiple choice (A–D)"],
+                  ["MCQ", "Multiple choice (A–D/E)"],
                   ["TITA", "Typed answer (TITA)"],
                 ] as const
               ).map(([value, label]) => (
@@ -458,8 +459,8 @@ export function QuestionEditorForm({
                   type="button"
                   onClick={() => {
                     setQuestionType(value);
-                    if (value === "MCQ" && !["A", "B", "C", "D"].includes(correctAnswer)) setCorrectAnswer("A");
-                    if (value === "TITA" && ["A", "B", "C", "D"].includes(correctAnswer)) setCorrectAnswer("");
+                    if (value === "MCQ" && !["A", "B", "C", "D", "E"].includes(correctAnswer)) setCorrectAnswer("A");
+                    if (value === "TITA" && ["A", "B", "C", "D", "E"].includes(correctAnswer)) setCorrectAnswer("");
                   }}
                   className={`py-2 rounded-lg border text-xs font-bold ${questionType === value ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-300"}`}
                 >
@@ -472,14 +473,16 @@ export function QuestionEditorForm({
           {/* Options */}
           <div className={`space-y-2 ${questionType === "TITA" ? "hidden" : ""}`}>
             <label className="block text-slate-700">Answer Options</label>
-            {(["A", "B", "C", "D"] as const).map((optKey) => (
+            {(["A", "B", "C", "D", "E"] as const).map((optKey) => (
               <div key={optKey} className="flex items-center gap-2">
                 <span className="font-bold text-slate-700 w-5">{optKey}:</span>
                 <input
                   value={options[optKey] || ""}
                   onChange={(e) => setOptions((prev) => ({ ...prev, [optKey]: e.target.value }))}
-                  placeholder={`Option ${optKey} text (supports math $...$)`}
-                  required={questionType === "MCQ"}
+                  placeholder={
+                    optKey === "E" ? "Option E (optional, for five-option papers such as NMAT)" : `Option ${optKey} text (supports math $...$)`
+                  }
+                  required={questionType === "MCQ" && optKey !== "E"}
                   className="flex-1 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 />
               </div>
@@ -509,6 +512,9 @@ export function QuestionEditorForm({
               <option value="B">Option B</option>
               <option value="C">Option C</option>
               <option value="D">Option D</option>
+              <option value="E" disabled={!options.E?.trim()}>
+                Option E
+              </option>
             </select>
           </div>
           )}

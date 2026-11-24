@@ -3,8 +3,9 @@
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SAVE_GRACE_SECONDS } from "@/lib/attempt-timing";
-import { isAnswerCorrect, isAnswered } from "@/lib/exam-patterns";
-import { finalizeAttempt, loadAttemptContext, questionInOpenSection, whileAttemptOpen } from "@/server/attempts";
+import { isAnswerCorrect, isAnswered, sectionKey } from "@/lib/exam-patterns";
+import { availableOptionKeys, parseQuestionOptions } from "@/lib/parse-markdown-questions";
+import { finalizeAttempt, loadAttemptContext, openSection, questionInOpenSection, whileAttemptOpen } from "@/server/attempts";
 
 type Fail = { ok: false; error: string; finished?: boolean };
 
@@ -14,13 +15,15 @@ async function requireSession() {
   return session;
 }
 
-function cleanResponse(questionType: string, answer: string | null): string | null | undefined {
+/** The response in stored form: null for "no answer", undefined when it is not a valid answer to this question. */
+function cleanResponse(question: { questionType: string; options: string }, answer: string | null): string | null | undefined {
   if (answer === null) return null;
   const a = String(answer).trim();
   if (!a) return null;
-  if (questionType === "TITA") return a.length <= 40 && /^[0-9a-zA-Z.,\-/: ]+$/.test(a) ? a : undefined;
+  if (question.questionType === "TITA") return a.length <= 40 && /^[0-9a-zA-Z.,\-/: ]+$/.test(a) ? a : undefined;
   const k = a.toUpperCase();
-  return ["A", "B", "C", "D"].includes(k) ? k : undefined;
+  // Only letters the question actually offers (A-D, plus E on five-option papers).
+  return (availableOptionKeys(parseQuestionOptions(question.options)) as string[]).includes(k) ? k : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,11 +38,11 @@ export async function saveAnswerAction(attemptId: string, questionId: string, se
 
   const question = await prisma.question.findFirst({
     where: { id: questionId, paperId: ctx.paper.id },
-    select: { correctAnswer: true, explanation: true, questionType: true },
+    select: { correctAnswer: true, explanation: true, questionType: true, options: true },
   });
   if (!question) throw new Error("Question not found");
 
-  const answer = cleanResponse(question.questionType, selectedAnswer);
+  const answer = cleanResponse(question, selectedAnswer);
   if (!answer) throw new Error("Invalid answer");
 
   // The solution is shown after the first answer, so that first answer is final: a second call
@@ -92,17 +95,44 @@ export async function saveResponseAction(
 
   const question = await prisma.question.findFirst({
     where: { id: questionId, paperId: ctx.paper.id },
-    select: { section: true, questionType: true, correctAnswer: true },
+    select: { section: true, questionType: true, correctAnswer: true, options: true },
   });
   if (!question) return { ok: false, error: "Question not found" };
   if (!questionInOpenSection(ctx, question.section)) return { ok: false, error: "This section is closed." };
 
-  const answer = cleanResponse(question.questionType, response.answer);
+  const answer = cleanResponse(question, response.answer);
   if (answer === undefined) return { ok: false, error: "That answer is not valid for this question." };
-  const markedForReview = !!response.markedForReview;
+  const linear = ctx.pattern.navigation === "linear";
+  // One-way papers (NMAT): an answer is required to move on, and there is no marking for review.
+  if (linear && !isAnswered(answer)) return { ok: false, error: "Choose an answer to continue." };
+  const markedForReview = linear ? false : !!response.markedForReview;
   const isCorrect = isAnswered(answer) ? isAnswerCorrect(question.questionType, question.correctAnswer, answer) : null;
 
+  let refusal: string | null = null;
   const saved = await whileAttemptOpen(attemptId, async (tx) => {
+    if (linear) {
+      // Only the next unanswered question (in exam order) may be answered, and only once.
+      const open = openSection(ctx);
+      const [all, answered] = await Promise.all([
+        tx.question.findMany({ where: { paperId: ctx.paper.id }, select: { id: true, section: true, questionNumber: true }, orderBy: [{ questionNumber: "asc" }, { id: "asc" }] }),
+        tx.attemptAnswer.findMany({ where: { attemptId }, select: { questionId: true, selectedAnswer: true } }),
+      ]);
+      const done = new Set(answered.filter((a) => isAnswered(a.selectedAnswer)).map((a) => a.questionId));
+      const order = ctx.timing.order;
+      const sequence = all
+        .filter((q) => open === null || sectionKey(q.section) === open)
+        .sort((a, b) => order.indexOf(sectionKey(a.section)) - order.indexOf(sectionKey(b.section)) || a.questionNumber - b.questionNumber);
+      const next = sequence.find((q) => !done.has(q.id));
+      // Happens only when the test is open in another tab or window: reloading shows the current question.
+      if (done.has(questionId)) {
+        refusal = "This question has already been answered and cannot be changed. Reload the page to continue.";
+        return;
+      }
+      if (!next || next.id !== questionId) {
+        refusal = "Questions must be answered in order. Reload the page to continue.";
+        return;
+      }
+    }
     await tx.attemptAnswer.upsert({
       where: { attemptId_questionId: { attemptId, questionId } },
       update: { selectedAnswer: answer, isCorrect, markedForReview, answeredAt: new Date() },
@@ -110,6 +140,7 @@ export async function saveResponseAction(
     });
   });
   if (!saved) return { ok: false, error: "This test has ended.", finished: true };
+  if (refusal) return { ok: false, error: refusal };
   return { ok: true };
 }
 

@@ -401,7 +401,7 @@ function ImportPreview({ result, stale }: { result: ImportResult; stale: boolean
                   </p>
                 ) : (
                 <ul className="grid sm:grid-cols-2 gap-1">
-                  {(["A", "B", "C", "D"] as const).map((k) => (
+                  {(["A", "B", "C", "D", "E"] as const).filter((k) => k !== "E" || q.options.E?.trim()).map((k) => (
                     <li
                       key={k}
                       className={`whitespace-pre-wrap rounded px-2 py-1 border ${

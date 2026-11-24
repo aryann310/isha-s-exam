@@ -425,7 +425,7 @@ export function PaperManager({
                     </span>
                   </div>
                   <p className="text-xs text-slate-500">
-                    {paper.year} • {paper.shift || "Standard Slot"} •{" "}
+                    {paper.year || "Undated"} • {paper.shift || "Standard Slot"} •{" "}
                     {paper.durationSeconds / 60} mins •{" "}
                     <span className="font-semibold text-slate-700">
                       {paper._count.questions} questions loaded

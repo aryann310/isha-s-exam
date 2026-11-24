@@ -1,5 +1,23 @@
-export type OptionKey = "A" | "B" | "C" | "D";
-export const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"];
+export type OptionKey = "A" | "B" | "C" | "D" | "E";
+/** Every option letter a question may have. A-D are always required; E is optional (NMAT has five options). */
+export const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D", "E"];
+export const REQUIRED_OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"];
+
+export function emptyOptions(): Record<OptionKey, string> {
+  return { A: "", B: "", C: "", D: "", E: "" };
+}
+
+/** Options as stored and shown: A-D always, E only when it has text. */
+export function compactOptions(options: Partial<Record<string, string>>): Record<string, string> {
+  const out: Record<string, string> = { A: options.A ?? "", B: options.B ?? "", C: options.C ?? "", D: options.D ?? "" };
+  if (options.E && options.E.trim()) out.E = options.E;
+  return out;
+}
+
+/** The option letters a question actually offers (with text), in order. */
+export function availableOptionKeys(options: Partial<Record<string, string>>): OptionKey[] {
+  return OPTION_KEYS.filter((k) => !!options[k]?.trim());
+}
 
 export interface ParsedMarkdownQuestion {
   questionNumber: number;
@@ -8,7 +26,7 @@ export interface ParsedMarkdownQuestion {
   difficulty: string;
   questionText: string;
   options: Record<OptionKey, string>;
-  /** MCQ: "A"-"D". TITA: the typed answer. "" when the source has no recognisable answer line. Never guessed. */
+  /** MCQ: "A"-"E". TITA: the typed answer. "" when the source has no recognisable answer line. Never guessed. */
   correctAnswer: string;
   /** "TITA" when declared with "- **Type**: TITA", or when the block has no options but has an answer value. */
   questionType: "MCQ" | "TITA";
@@ -31,22 +49,24 @@ export function parseQuestionOptions(raw?: string | Record<string, unknown> | un
   }
 
   if (Array.isArray(parsed)) {
-    return {
+    return compactOptions({
       A: String(parsed[0] ?? ""),
       B: String(parsed[1] ?? ""),
       C: String(parsed[2] ?? ""),
       D: String(parsed[3] ?? ""),
-    };
+      E: String(parsed[4] ?? ""),
+    });
   }
 
   if (typeof parsed === "object" && parsed !== null) {
     const obj = parsed as Record<string, unknown>;
-    return {
+    return compactOptions({
       A: String(obj.A ?? obj.a ?? obj.optionA ?? obj["1"] ?? ""),
       B: String(obj.B ?? obj.b ?? obj.optionB ?? obj["2"] ?? ""),
       C: String(obj.C ?? obj.c ?? obj.optionC ?? obj["3"] ?? ""),
       D: String(obj.D ?? obj.d ?? obj.optionD ?? obj["4"] ?? ""),
-    };
+      E: String(obj.E ?? obj.e ?? obj.optionE ?? obj["5"] ?? ""),
+    });
   }
 
   return fallback;
@@ -81,7 +101,7 @@ const OPTIONS_HEADER = /^(?:#{1,6}\s*)?(?:\*\*|__)?\s*(?:Options|Choices|Answer 
 const EXPLANATION_HEADER = /^(?:#{1,6}\s*)?[-*+]?\s*(?:\*\*|__)?\s*(?:Explanation|Solution|Detailed Solution)\s*(?:(?:\*\*|__)?\s*:\s*(?:\*\*|__)?|(?:\*\*|__)?\s*$)\s*(.*)$/i;
 // "Answer: C", "**Correct Answer:** (C) threatened", "Ans. B" — but not "Answer: Both A and B".
 const ANSWER_LABEL = String.raw`^[-*+]?\s*(?:\*\*|__)?\s*(?:(?:Correct\s+(?:Answer|Option)|Answer|Ans)\s*(?:\*\*|__)?\s*[:\-–—]|Ans\.\s*(?:\*\*|__)?\s*:?)\s*(?:\*\*|__)?\s*`;
-const ANSWER_LINE = new RegExp(ANSWER_LABEL + String.raw`(?:Option\s*)?[(\[]?([A-Da-d])[)\]]?(?![A-Za-z0-9])`, "i");
+const ANSWER_LINE = new RegExp(ANSWER_LABEL + String.raw`(?:Option\s*)?[(\[]?([A-Ea-e])[)\]]?(?![A-Za-z0-9])`, "i");
 const ANSWER_LABEL_ONLY = new RegExp(ANSWER_LABEL + "$", "i");
 // Any other "Answer: ..." line — it still ends the options, but the letter can't be trusted.
 const ANSWER_UNPARSED = new RegExp(ANSWER_LABEL, "i");
@@ -93,11 +113,11 @@ function cleanTypedAnswer(value: string): string {
 }
 
 // An option line with an explicit marker: "(A) x", "- (a) x", "A) x", "A. x", "A: x", "[A] x",
-// "Option A: x", "**A.** x", "**(A)** x". Lowercase is only accepted with "(a)" or "a)".
+// "Option A: x", "**A.** x", "**(A)** x". Lowercase is only accepted with "(a)" or "a)". E is an optional fifth option.
 const STRONG_OPTION =
-  /^\s*(?:[-*+]\s+|\d+\.\s+)?(?:\*\*|__)?\s*(?:Option\s+([A-Da-d])\s*[.:)\-–—]?|\(([A-Da-d])\)|\[([A-D])\]|([A-D])\s*[.):]|([a-d])\))\s*(?:\*\*|__)?\s*(.*)$/;
+  /^\s*(?:[-*+]\s+|\d+\.\s+)?(?:\*\*|__)?\s*(?:Option\s+([A-Ea-e])\s*[.:)\-–—]?|\(([A-Ea-e])\)|\[([A-E])\]|([A-E])\s*[.):]|([a-e])\))\s*(?:\*\*|__)?\s*(.*)$/;
 // "A 12" — only trusted right after an explicit Options header.
-const WEAK_OPTION = /^\s*(?:[-*+]\s+)?([A-D])\s+(.+)$/;
+const WEAK_OPTION = /^\s*(?:[-*+]\s+)?([A-E])\s+(.+)$/;
 // "(A) one (B) two (C) three (D) four" on a single line.
 const INLINE_OPTIONS = /^\s*(?:[-*+]\s+)?\(?A\)\s*(.+?)\s+\(?B\)\s*(.+?)\s+\(?C\)\s*(.+?)\s+\(?D\)\s*(.+?)\s*$/;
 
@@ -113,7 +133,7 @@ function matchInlineOptions(line: string): Record<OptionKey, string> | null {
   if (!/\(A\)/.test(line) || !/\(D\)/.test(line)) return null;
   const m = line.match(INLINE_OPTIONS);
   if (!m) return null;
-  return { A: cleanOptionText(m[1]), B: cleanOptionText(m[2]), C: cleanOptionText(m[3]), D: cleanOptionText(m[4]) };
+  return { A: cleanOptionText(m[1]), B: cleanOptionText(m[2]), C: cleanOptionText(m[3]), D: cleanOptionText(m[4]), E: "" };
 }
 
 function cleanOptionText(text: string): string {
@@ -234,7 +254,7 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
       applyMeta(k.field, k.value);
     } else if (awaitingAnswerValue && k.kind === "text") {
       // "**Correct Answer:**" on one line and "C" on the next.
-      const m = k.line.trim().match(/^(?:\*\*|__)?\s*(?:Option\s*)?[(\[]?([A-Da-d])[)\]]?(?![A-Za-z0-9])/);
+      const m = k.line.trim().match(/^(?:\*\*|__)?\s*(?:Option\s*)?[(\[]?([A-Ea-e])[)\]]?(?![A-Za-z0-9])/);
       if (m && !correctAnswer) correctAnswer = m[1].toUpperCase();
       else if (rawAnswer === null) rawAnswer = cleanTypedAnswer(k.line.trim());
       else explanationLines.push(blockLines[i]);
@@ -256,7 +276,7 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
   }
 
   // Decide where the options start.
-  const options: Record<OptionKey, string> = { A: "", B: "", C: "", D: "" };
+  const options: Record<OptionKey, string> = emptyOptions();
   const headerIdx = body.findIndex((b) => b.kind.kind === "optionsHeader");
   let questionPart: string[];
   let optionPart: string[];
@@ -357,7 +377,7 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
     if (!typedAnswer) warnings.push('No answer found for this typed-answer (TITA) question (expected "**Correct Answer:** 42")');
     return {
       questionNumber, section, topic, difficulty, questionText,
-      options: { A: "", B: "", C: "", D: "" },
+      options: emptyOptions(),
       correctAnswer: typedAnswer, questionType, explanation, warnings,
     };
   }
@@ -366,13 +386,16 @@ function parseBlock(blockLines: string[], questionNumber: number): ParsedMarkdow
   if (noOptions && !correctAnswer) return null;
 
   if (!questionText) warnings.push("Question text is empty");
-  for (const k of OPTION_KEYS) {
+  for (const k of REQUIRED_OPTION_KEYS) {
     if (!options[k]) warnings.push(`Option ${k} is empty`);
+  }
+  if (correctAnswer && !options[correctAnswer as OptionKey]) {
+    warnings.push(`The correct answer is ${correctAnswer}, but the question has no option ${correctAnswer}`);
   }
   if (!correctAnswer) {
     warnings.push(
       kinds.some((k) => k.kind === "answerUnparsed")
-        ? "Answer line does not name a single option A-D"
+        ? "Answer line does not name a single option A-E"
         : "No correct answer found (expected a line like \"**Correct Answer:** C\")"
     );
   }

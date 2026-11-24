@@ -25,7 +25,7 @@ export default async function ExamPapersPage({
     include: {
       papers: {
         where: isAdmin ? {} : { isActive: true },
-        orderBy: { year: "desc" },
+        orderBy: [{ year: "desc" }, { title: "asc" }],
       },
     },
   });
@@ -116,9 +116,12 @@ export default async function ExamPapersPage({
               >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-black uppercase bg-gray-950 text-white px-2 py-0.5 rounded">
-                      {paper.year}
-                    </span>
+                    {/* Undated papers (year 0) show no year badge. */}
+                    {paper.year > 0 && (
+                      <span className="text-[10px] font-black uppercase bg-gray-950 text-white px-2 py-0.5 rounded">
+                        {paper.year}
+                      </span>
+                    )}
                     {paper.shift && (
                       <span className="text-[10px] font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
                         {paper.shift}

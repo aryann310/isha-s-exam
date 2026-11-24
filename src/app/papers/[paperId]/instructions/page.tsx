@@ -102,9 +102,12 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
             </ol>
 
             <div>
-              <p className="font-bold mb-3">The question palette uses these symbols:</p>
+              <p className="font-bold mb-3">
+                {pattern.navigation === "linear" ? "The progress panel uses these symbols:" : "The question palette uses these symbols:"}
+              </p>
               <ul className="grid sm:grid-cols-2 gap-3">
-                {PALETTE_ORDER.map((st, i) => (
+                {/* One-way papers have no marking for review. */}
+                {PALETTE_ORDER.filter((st) => pattern.navigation !== "linear" || st === "answered" || st === "notAnswered" || st === "notVisited").map((st, i) => (
                   <li key={st} className="flex items-center gap-3">
                     <PaletteSymbol status={st} label={i + 1} size="sm" />
                     <span>{PALETTE_LABELS[st]}</span>

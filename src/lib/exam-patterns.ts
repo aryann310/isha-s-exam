@@ -24,12 +24,25 @@ export interface ExamPattern {
   canSubmitSectionEarly: boolean;
   /** Overall only: may the candidate submit before the time is up? */
   canSubmitEarly: boolean;
+  /**
+   * "free": move between questions with the palette, Back, Mark for Review (CAT, CMAT, SNAP).
+   * "linear": one question at a time in order; an answer is required to move on, and an answered question can't be
+   * revisited or changed (NMAT). Applies to mock tests; practice mode always allows free movement.
+   */
+  navigation: "free" | "linear";
   calculator: boolean;
   totalMinutes: number;
   marks: { correct: number; incorrect: number; unattempted: number; titaCorrect: number; titaIncorrect: number };
   sections: PatternSection[];
   instructions: string[];
 }
+
+const LINEAR_INSTRUCTIONS = [
+  "The clock is set on the server. The countdown timer at the top right of the screen shows the time left in the current section. When it reaches zero, the section ends by itself.",
+  "Questions are shown one at a time. Select an answer and click Next to confirm it and see the next question.",
+  "You must answer a question to move on. You cannot skip a question, go back to an earlier question, or change an answer once you have clicked Next.",
+  "The panel on the right shows your progress through the section.",
+];
 
 const COMMON_INSTRUCTIONS = [
   "The clock is set on the server. The countdown timer at the top right of the screen shows the time remaining. When it reaches zero, the test ends by itself; you do not need to submit.",
@@ -49,6 +62,7 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
     sectionOrder: "fixed",
     canSubmitSectionEarly: false,
     canSubmitEarly: false,
+    navigation: "free",
     calculator: true,
     totalMinutes: 120,
     marks: { correct: 3, incorrect: -1, unattempted: 0, titaCorrect: 3, titaIncorrect: 0 },
@@ -68,11 +82,13 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
   NMAT: {
     id: "NMAT",
     label: "NMAT",
-    summary: "3 sections, 36 questions each, separately timed (Language 28, Quant 52, LR 40 minutes). Candidate chooses the section order. No negative marking.",
+    summary:
+      "108 questions in 3 sections of 36, each separately timed (Language Skills 28, Quantitative Skills 52, Logical Reasoning 40 minutes; 120 in all). You choose the section order. One question at a time, no going back. +3, no negative marking.",
     timing: "sectional",
     sectionOrder: "candidate",
     canSubmitSectionEarly: true,
     canSubmitEarly: false,
+    navigation: "linear",
     calculator: false,
     totalMinutes: 120,
     marks: { correct: 3, incorrect: 0, unattempted: 0, titaCorrect: 3, titaIncorrect: 0 },
@@ -81,11 +97,14 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
       { name: "Quantitative Skills", aliases: ["quant", "quantitative"], minutes: 52 },
       { name: "Logical Reasoning", aliases: ["logical", "reasoning"], minutes: 40 },
     ],
+    // Rules from GMAC (mba.com, NMAT by GMAC exam structure and help centre).
     instructions: [
-      "Each section is timed separately (see the table above). Before you start, choose the order in which you will take them; the order cannot be changed later.",
-      "You may end a section before its time is up. Unused time is not carried over to the next section.",
-      "Once you leave a section you cannot return to it.",
-      "Each correct answer earns 3 marks. There is no negative marking.",
+      "The test has three sections: Language Skills (36 questions, 28 minutes), Quantitative Skills (36 questions, 52 minutes) and Logical Reasoning (36 questions, 40 minutes).",
+      "Each section is timed separately. Before you start, choose the order in which you will take the sections; the order cannot be changed later.",
+      "You may end a section before its time is up, but the unused time is not added to the next section. Once you leave a section you cannot return to it.",
+      "Every question has five options (A to E). Each correct answer earns 3 marks. There is no negative marking, so answer every question.",
+      "No calculator is allowed; use rough paper. There are no scheduled breaks: the clock keeps running.",
+      "The real NMAT is adaptive and reports scaled scores (12–120 per section, 36–360 in total). This mock uses a fixed set of questions and shows raw marks.",
     ],
   },
   CMAT: {
@@ -96,6 +115,7 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
     sectionOrder: "fixed",
     canSubmitSectionEarly: true,
     canSubmitEarly: true,
+    navigation: "free",
     calculator: false,
     totalMinutes: 180,
     marks: { correct: 4, incorrect: -1, unattempted: 0, titaCorrect: 4, titaIncorrect: 0 },
@@ -120,6 +140,7 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
     sectionOrder: "fixed",
     canSubmitSectionEarly: true,
     canSubmitEarly: true,
+    navigation: "free",
     calculator: false,
     totalMinutes: 60,
     marks: { correct: 1, incorrect: -0.25, unattempted: 0, titaCorrect: 1, titaIncorrect: 0 },
@@ -142,6 +163,7 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
     sectionOrder: "fixed",
     canSubmitSectionEarly: true,
     canSubmitEarly: true,
+    navigation: "free",
     calculator: false,
     totalMinutes: 60,
     marks: { correct: 4, incorrect: -1, unattempted: 0, titaCorrect: 4, titaIncorrect: 0 },
@@ -157,7 +179,7 @@ export function getPattern(id: string | null | undefined): ExamPattern {
 }
 
 export function patternInstructions(p: ExamPattern): string[] {
-  return [...p.instructions, ...COMMON_INSTRUCTIONS];
+  return [...p.instructions, ...(p.navigation === "linear" ? LINEAR_INSTRUCTIONS : COMMON_INSTRUCTIONS)];
 }
 
 // ---------------------------------------------------------------------------

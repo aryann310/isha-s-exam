@@ -42,6 +42,8 @@ interface Props {
   isLastSection: boolean;
   canSubmitSectionEarly: boolean;
   canSubmitEarly: boolean;
+  /** One-way navigation (NMAT): answer each question in order, no going back. The server enforces it too. */
+  linear: boolean;
   calculator: boolean;
   marks: Record<"MCQ" | "TITA", { correct: number; incorrect: number }>;
   instructions: string[];
@@ -66,15 +68,25 @@ function emptySummary(): Record<PaletteStatus, number> {
   return { notVisited: 0, notAnswered: 0, answered: 0, marked: 0, answeredMarked: 0 };
 }
 
+/** Statuses that can occur on a one-way (linear) paper: there is no marking for review. */
+const LINEAR_STATUSES: PaletteStatus[] = ["answered", "notAnswered", "notVisited"];
+
+const hasAnswer = (r: Response | undefined) => !!r?.answer && r.answer.trim() !== "";
+
 export function MockExamEngine(props: Props) {
-  const { attemptId, questions, sections, sectional } = props;
+  const { attemptId, questions, sections, sectional, linear } = props;
   const router = useRouter();
 
   const firstIndex = useMemo(() => {
-    // Resume on the first question not yet visited, else the first one.
+    // Linear: resume on the first unanswered question (the last one when all are answered).
+    // Otherwise: the first question not yet visited, else the first one.
+    if (linear) {
+      const i = questions.findIndex((q) => !hasAnswer(props.initialResponses[q.id]));
+      return i === -1 ? Math.max(0, questions.length - 1) : i;
+    }
     const i = questions.findIndex((q) => !props.initialResponses[q.id]?.visited);
     return i === -1 ? 0 : i;
-  }, [questions, props.initialResponses]);
+  }, [questions, props.initialResponses, linear]);
   // The question shown first counts as visited straight away.
   const [responses, setResponses] = useState<Record<string, Response>>(() => {
     const first = questions[firstIndex];
@@ -154,9 +166,11 @@ export function MockExamEngine(props: Props) {
     void visitQuestionAction(attemptId, qid).catch(() => undefined);
   }, [attemptId, qid]);
 
-  const goTo = (index: number) => {
+  const goTo = (index: number, force = false) => {
     const target = questions[index];
     if (!target) return;
+    // One-way papers only ever move forward, and only from the code path that saved an answer.
+    if (linear && !force) return;
     // Moving away without Save & Next discards an unsaved choice, as in the real exam.
     setCurrent(index);
     setDraft(responses[target.id]?.answer ?? null);
@@ -182,7 +196,7 @@ export function MockExamEngine(props: Props) {
         return;
       }
       // On the last question there is nowhere to go: stay and keep showing the saved answer.
-      if (advance && current < questions.length - 1) goTo(current + 1);
+      if (advance && current < questions.length - 1) goTo(current + 1, true);
     } catch {
       setResponses((prev) => ({ ...prev, [q.id]: before ?? { visited: true, answer: null, markedForReview: false } }));
       setError("Could not save. Check your connection and try again.");
@@ -238,6 +252,9 @@ export function MockExamEngine(props: Props) {
 
   const submitAllowed = sectional ? props.canSubmitSectionEarly : props.canSubmitEarly;
   const submitLabel = sectional ? (props.isLastSection ? "Submit Test" : "Submit Section") : "Submit";
+  const legend = linear ? PALETTE_ORDER.filter((st) => LINEAR_STATUSES.includes(st)) : PALETTE_ORDER;
+  const answeredInSection = sectionQuestions.filter(({ item }) => hasAnswer(responses[item.id])).length;
+  const allAnswered = linear && questions.length > 0 && questions.every((x) => hasAnswer(responses[x.id]));
 
   if (!q) {
     return (
@@ -259,9 +276,11 @@ export function MockExamEngine(props: Props) {
           <h1 className="font-bold truncate">{props.paperTitle}</h1>
         </div>
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          <button onClick={() => setModal("paper")} className="hidden sm:inline text-xs font-semibold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded">
-            Question Paper
-          </button>
+          {!linear && (
+            <button onClick={() => setModal("paper")} className="hidden sm:inline text-xs font-semibold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded">
+              Question Paper
+            </button>
+          )}
           <button onClick={() => setModal("instructions")} className="text-xs font-semibold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded">
             Instructions
           </button>
@@ -319,6 +338,23 @@ export function MockExamEngine(props: Props) {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Question area */}
+        {allAnswered ? (
+          <main className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
+            <p className="text-lg font-bold">You have answered all {questions.length} questions in this section.</p>
+            <p className="text-sm text-gray-600 max-w-md">
+              {props.isLastSection
+                ? "Submit the test to see your result. Answers can no longer be changed."
+                : "Submit this section to move on to the next one. The time left in this section is not carried over."}
+            </p>
+            <button
+              onClick={() => setModal("submit")}
+              disabled={busy}
+              className="px-8 py-2.5 rounded font-bold text-white bg-[#3d9b35] hover:bg-[#2f7d29] disabled:opacity-50"
+            >
+              {submitLabel}
+            </button>
+          </main>
+        ) : (
         <main className="flex-1 flex flex-col min-w-0">
           <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-gray-300">
             <span className="font-bold">Question No. {q.number}</span>
@@ -376,6 +412,23 @@ export function MockExamEngine(props: Props) {
           </div>
 
           {/* Action bar */}
+          {linear ? (
+            <div className="flex-none border-t border-gray-300 bg-gray-50 px-3 py-2 flex items-center justify-between gap-2">
+              <span className="text-xs text-gray-600">Answer this question to continue. You cannot come back to it.</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveAndNext}
+                  disabled={busy || !draft}
+                  className="px-6 py-2 text-sm font-bold rounded bg-[#2a7ab8] text-white hover:bg-[#21689e] disabled:opacity-50"
+                >
+                  {busy ? "Saving…" : "Next"}
+                </button>
+                <button onClick={() => setPaletteOpen(true)} className="md:hidden px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white">
+                  Progress
+                </button>
+              </div>
+            </div>
+          ) : (
           <div className="flex-none border-t border-gray-300 bg-gray-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
             <div className="flex gap-2">
               <button onClick={markAndNext} disabled={busy} className="px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white hover:bg-gray-100 disabled:opacity-50">
@@ -397,7 +450,9 @@ export function MockExamEngine(props: Props) {
               </button>
             </div>
           </div>
+          )}
         </main>
+        )}
 
         {/* Palette */}
         <aside
@@ -417,7 +472,7 @@ export function MockExamEngine(props: Props) {
           </div>
 
           <ul className="flex-none grid grid-cols-2 gap-x-2 gap-y-2 p-3 border-b border-gray-300 text-[11px] leading-tight">
-            {PALETTE_ORDER.map((st) => (
+            {legend.map((st) => (
               <li key={st} className={`flex items-center gap-2 ${st === "answeredMarked" ? "col-span-2" : ""}`}>
                 <PaletteSymbol status={st} label={counts[st]} size="sm" />
                 <span>{PALETTE_LABELS[st]}</span>
@@ -426,14 +481,22 @@ export function MockExamEngine(props: Props) {
           </ul>
 
           <div className="flex-none bg-[#1f4e79] text-white text-xs font-bold px-3 py-1.5 truncate">{currentSection?.name}</div>
-          <p className="flex-none text-[11px] font-semibold text-gray-600 px-3 pt-2">Choose a Question</p>
+          <p className="flex-none text-[11px] font-semibold text-gray-600 px-3 pt-2">
+            {linear ? `Progress: ${answeredInSection} of ${sectionQuestions.length} answered` : "Choose a Question"}
+          </p>
           <div className="flex-1 overflow-y-auto p-3">
             <div className="grid grid-cols-5 gap-2.5">
-              {sectionQuestions.map(({ item, i }) => (
-                <button key={item.id} onClick={() => goTo(i)} title={PALETTE_LABELS[status(item.id)]} className="flex justify-center">
-                  <PaletteSymbol status={status(item.id)} label={item.number} current={i === current} />
-                </button>
-              ))}
+              {sectionQuestions.map(({ item, i }) =>
+                linear ? (
+                  <span key={item.id} title={PALETTE_LABELS[status(item.id)]} className="flex justify-center">
+                    <PaletteSymbol status={status(item.id)} label={item.number} current={!allAnswered && i === current} />
+                  </span>
+                ) : (
+                  <button key={item.id} onClick={() => goTo(i)} title={PALETTE_LABELS[status(item.id)]} className="flex justify-center">
+                    <PaletteSymbol status={status(item.id)} label={item.number} current={i === current} />
+                  </button>
+                )
+              )}
             </div>
           </div>
 
@@ -477,8 +540,8 @@ export function MockExamEngine(props: Props) {
                           <th className="border border-gray-300 px-2 py-2">No. of Questions</th>
                           <th className="border border-gray-300 px-2 py-2">Answered</th>
                           <th className="border border-gray-300 px-2 py-2">Not Answered</th>
-                          <th className="border border-gray-300 px-2 py-2">Marked for Review</th>
-                          <th className="border border-gray-300 px-2 py-2">Answered &amp; Marked for Review</th>
+                          {!linear && <th className="border border-gray-300 px-2 py-2">Marked for Review</th>}
+                          {!linear && <th className="border border-gray-300 px-2 py-2">Answered &amp; Marked for Review</th>}
                           <th className="border border-gray-300 px-2 py-2">Not Visited</th>
                         </tr>
                       </thead>
@@ -492,8 +555,8 @@ export function MockExamEngine(props: Props) {
                             <td className="border border-gray-300 px-2 py-2">{s.total}</td>
                             <td className="border border-gray-300 px-2 py-2">{c.answered}</td>
                             <td className="border border-gray-300 px-2 py-2">{c.notAnswered}</td>
-                            <td className="border border-gray-300 px-2 py-2">{c.marked}</td>
-                            <td className="border border-gray-300 px-2 py-2">{c.answeredMarked}</td>
+                            {!linear && <td className="border border-gray-300 px-2 py-2">{c.marked}</td>}
+                            {!linear && <td className="border border-gray-300 px-2 py-2">{c.answeredMarked}</td>}
                             <td className="border border-gray-300 px-2 py-2">{c.notVisited}</td>
                           </tr>
                         ))}
@@ -515,7 +578,7 @@ export function MockExamEngine(props: Props) {
                     ))}
                   </ol>
                   <ul className="grid sm:grid-cols-2 gap-2">
-                    {PALETTE_ORDER.map((st, i) => (
+                    {legend.map((st, i) => (
                       <li key={st} className="flex items-center gap-2">
                         <PaletteSymbol status={st} label={i + 1} size="sm" />
                         <span>{PALETTE_LABELS[st]}</span>

@@ -152,7 +152,9 @@ export default async function PaperInfoPage({
               >
                 <div className="text-lg font-black text-white mb-1">MOCK TEST MODE</div>
                 <div className="text-xs font-medium text-gray-300">
-                  Real {pattern.label} exam conditions: timer, question palette, Mark for Review. Answers and solutions after you submit.
+                  {pattern.navigation === "linear"
+                    ? `Real ${pattern.label} exam conditions: timed sections, one question at a time, no going back. Answers and solutions after you submit.`
+                    : `Real ${pattern.label} exam conditions: timer, question palette, Mark for Review. Answers and solutions after you submit.`}
                 </div>
               </Link>
             </form>
