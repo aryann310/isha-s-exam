@@ -368,7 +368,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                   </span>
                 ) : (
                   <span className="text-xs text-blue-700 font-bold">
-                    Option {answers[currentQuestion.id]} selected. Click CONFIRM ANSWER to reveal the solution.
+                    {currentQuestion.questionType === "TITA" ? "Answer" : "Option"} {answers[currentQuestion.id]} selected. Click CONFIRM ANSWER to reveal the solution.
                   </span>
                 )}
               </div>
@@ -391,12 +391,12 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                     <div className="text-sm text-gray-700 font-medium">
                       Your Answer:{" "}
                       <strong className="text-gray-950 font-bold">
-                        Option {answers[currentQuestion.id]}
+                        {currentQuestion.questionType === "TITA" ? "" : "Option "}{answers[currentQuestion.id]}
                       </strong>
                       {" • "}
                       Correct Answer:{" "}
                       <strong className="text-emerald-700 font-bold">
-                        Option {results[currentQuestion.id].correctAnswer}
+                        {currentQuestion.questionType === "TITA" ? results[currentQuestion.id].correctAnswer.split("|").join(" or ") : `Option ${results[currentQuestion.id].correctAnswer}`}
                       </strong>
                     </div>
                   </div>
