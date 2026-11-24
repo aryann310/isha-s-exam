@@ -1,5 +1,7 @@
 import {
   OPTION_KEYS,
+  REQUIRED_OPTION_KEYS,
+  emptyOptions,
   parseMarkdownQuestions,
   parseQuestionOptions,
   questionFingerprint,
@@ -75,14 +77,14 @@ function readType(value: unknown): "MCQ" | "TITA" {
   return /tita|type in|typed|numeric|non[- ]?mcq/i.test(String(value ?? "")) ? "TITA" : "MCQ";
 }
 
-/** MCQ answers must be A-D; TITA answers are kept as typed. */
+/** MCQ answers must be A-E (E only when the question has a fifth option); TITA answers are kept as typed. */
 function readAnswer(type: "MCQ" | "TITA", raw: unknown): { answer: string; problems: string[] } {
   if (type === "TITA") {
     const a = String(raw ?? "").trim();
     return a ? { answer: a, problems: [] } : { answer: "", problems: ["Typed-answer (TITA) question has no correct answer"] };
   }
   const answer = normalizeCorrectAnswer(raw);
-  return { answer, problems: answer ? [] : [`Correct answer "${String(raw ?? "")}" is not one of A, B, C, D`] };
+  return { answer, problems: answer ? [] : [`Correct answer "${String(raw ?? "")}" is not one of A, B, C, D, E`] };
 }
 
 function positiveInt(value: unknown): number | null {
@@ -167,6 +169,7 @@ export function normalizeImport(rawData: string, format: ImportFormat): Normaliz
           B: q.optionB ?? q.option_b ?? q.b ?? "",
           C: q.optionC ?? q.option_c ?? q.c ?? "",
           D: q.optionD ?? q.option_d ?? q.d ?? "",
+          E: q.optionE ?? q.option_e ?? q.e ?? "",
         }
       );
       const questionType = readType(q.questionType ?? q.question_type ?? q.type);
@@ -177,8 +180,8 @@ export function normalizeImport(rawData: string, format: ImportFormat): Normaliz
         questionText: cleanText(q.questionText ?? q.question),
         options:
           questionType === "TITA"
-            ? { A: "", B: "", C: "", D: "" }
-            : { A: cleanText(opts.A), B: cleanText(opts.B), C: cleanText(opts.C), D: cleanText(opts.D) },
+            ? emptyOptions()
+            : { A: cleanText(opts.A), B: cleanText(opts.B), C: cleanText(opts.C), D: cleanText(opts.D), E: cleanText(opts.E) },
         correctAnswer: answer,
         explanation: cleanText(q.explanation),
         section: cleanOptional(q.section),
@@ -210,6 +213,8 @@ export function normalizeImport(rawData: string, format: ImportFormat): Normaliz
         B: cleanText(col(row, "option_b", 5)),
         C: cleanText(col(row, "option_c", 6)),
         D: cleanText(col(row, "option_d", 7)),
+        // Only read by name: older files have no option_e column and index 8 is the answer.
+        E: header.includes("option_e") ? cleanText(col(row, "option_e", -1)) : "",
       },
       correctAnswer,
       explanation: cleanText(col(row, "explanation", 9)),
@@ -246,8 +251,11 @@ export function validateQuestions(questions: NormalizedQuestion[]): ImportIssue[
       if (!q.correctAnswer) err("Typed-answer (TITA) question has no correct answer");
       else if (q.correctAnswer.length > 60) err("Typed answer is too long (60 characters at most)");
     } else {
-      for (const k of OPTION_KEYS) if (!q.options[k]) err(`Option ${k} is empty`);
-      if (!q.correctAnswer && q.problems.length === 0) err("Correct answer must be A, B, C or D");
+      for (const k of REQUIRED_OPTION_KEYS) if (!q.options[k]) err(`Option ${k} is empty`);
+      if (!q.correctAnswer && q.problems.length === 0) err("Correct answer must be A, B, C, D or E");
+      else if (q.correctAnswer && !q.options[q.correctAnswer as OptionKey]) {
+        err(`The correct answer is ${q.correctAnswer}, but the question has no option ${q.correctAnswer}`);
+      }
     }
 
     if (seenNumbers.has(n)) err(`Question number ${n} appears more than once in this import`);
@@ -261,9 +269,10 @@ export function validateQuestions(questions: NormalizedQuestion[]): ImportIssue[
     }
 
     if (q.questionType === "TITA") continue;
-    const values = OPTION_KEYS.map((k) => q.options[k].trim().toLowerCase()).filter(Boolean);
+    const values = OPTION_KEYS.map((k) => (q.options[k] ?? "").trim().toLowerCase()).filter(Boolean);
     if (new Set(values).size < values.length) warn("Two or more options have identical text");
     for (const k of OPTION_KEYS) {
+      if (!q.options[k]) continue;
       if (LEAKED_METADATA.test(q.options[k])) err(`Option ${k} contains formatting/metadata from the source file`);
       else if (q.options[k].length > 300) warn(`Option ${k} is unusually long (${q.options[k].length} characters)`);
     }

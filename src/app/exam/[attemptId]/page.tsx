@@ -86,6 +86,7 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
       isLastSection={isLastSection}
       canSubmitSectionEarly={pattern.canSubmitSectionEarly}
       canSubmitEarly={pattern.canSubmitEarly}
+      linear={pattern.navigation === "linear"}
       calculator={pattern.calculator}
       marks={{
         MCQ: { correct: p.correctMarks, incorrect: p.incorrectMarks },

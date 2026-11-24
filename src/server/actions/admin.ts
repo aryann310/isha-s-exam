@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { createAttempt, finalizeAttempt, freshAttemptState, rescorePaper } from "@/server/attempts";
 import { PATTERN_IDS, isAnswerCorrect, parseSectionConfig } from "@/lib/exam-patterns";
-import { parseQuestionOptions, questionFingerprint } from "@/lib/parse-markdown-questions";
+import { availableOptionKeys, compactOptions, parseQuestionOptions, questionFingerprint } from "@/lib/parse-markdown-questions";
 import {
   ImportInputError,
   normalizeImport,
@@ -231,7 +231,9 @@ export async function createPaperAction(formData: FormData) {
   const title = (formData.get("title") as string)?.trim();
   if (!title) return { success: false, error: "Enter a paper title." };
 
-  const year = parseInt(formData.get("year") as string, 10) || new Date().getFullYear();
+  const yearInput = parseInt(formData.get("year") as string, 10);
+  // 0 marks an undated paper (no year badge for students).
+  const year = Number.isInteger(yearInput) && yearInput >= 0 ? yearInput : new Date().getFullYear();
   const shift = (formData.get("shift") as string)?.trim() || null;
   const durationMinutes = parseInt(formData.get("durationMinutes") as string, 10) || 60;
 
@@ -282,7 +284,9 @@ export async function updatePaperAction(formData: FormData) {
   const title = (formData.get("title") as string)?.trim();
   if (!title) return { success: false, error: "Enter a paper title." };
 
-  const year = parseInt(formData.get("year") as string, 10) || new Date().getFullYear();
+  const yearInput = parseInt(formData.get("year") as string, 10);
+  // 0 marks an undated paper (no year badge for students).
+  const year = Number.isInteger(yearInput) && yearInput >= 0 ? yearInput : new Date().getFullYear();
   const shift = (formData.get("shift") as string)?.trim() || null;
   const durationMinutes = parseInt(formData.get("durationMinutes") as string, 10) || 60;
   const correctMarks = parseFloat(formData.get("correctMarks") as string);
@@ -356,13 +360,16 @@ async function checkQuestionInput(
   questionNumber: number,
   correctAnswer: string,
   excludeId: string | null,
-  questionType: string = "MCQ"
+  questionType: string = "MCQ",
+  options: Record<string, string> = {}
 ): Promise<string | null> {
   if (!Number.isInteger(questionNumber) || questionNumber < 1) return "Question number must be a positive whole number.";
   if (questionType === "TITA") {
     if (!correctAnswer.trim() || correctAnswer.length > 60) return "Enter the correct typed answer (up to 60 characters).";
-  } else if (!["A", "B", "C", "D"].includes(correctAnswer)) {
-    return "Correct answer must be A, B, C or D.";
+  } else if (!["A", "B", "C", "D", "E"].includes(correctAnswer)) {
+    return "Correct answer must be A, B, C, D or E.";
+  } else if (!(availableOptionKeys(options) as string[]).includes(correctAnswer)) {
+    return `The correct answer is ${correctAnswer}, but option ${correctAnswer} has no text.`;
   }
   const clash = await prisma.question.findFirst({
     where: { paperId, questionNumber, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
@@ -387,19 +394,16 @@ export async function createQuestionAction(formData: FormData) {
   const optionB = formData.get("optionB") as string;
   const optionC = formData.get("optionC") as string;
   const optionD = formData.get("optionD") as string;
+  const optionE = (formData.get("optionE") as string | null) ?? "";
 
-  const optionsObj: Record<string, string> = {
-    A: optionA,
-    B: optionB,
-    C: optionC,
-    D: optionD,
-  };
+  // E is optional (five-option papers such as NMAT); it is only stored when it has text.
+  const optionsObj = compactOptions({ A: optionA, B: optionB, C: optionC, D: optionD, E: optionE });
 
   const questionType = formData.get("questionType") === "TITA" ? "TITA" : "MCQ";
-  const invalid = await checkQuestionInput(paperId, questionNumber, correctAnswer, null, questionType);
+  const invalid = await checkQuestionInput(paperId, questionNumber, correctAnswer, null, questionType, optionsObj);
   if (invalid) return { success: false, error: invalid };
-  if (questionType === "MCQ" && Object.values(optionsObj).some((o) => !o || !o.trim())) {
-    return { success: false, error: "A multiple-choice question needs text for all four options." };
+  if (questionType === "MCQ" && [optionA, optionB, optionC, optionD].some((o) => !o || !o.trim())) {
+    return { success: false, error: "A multiple-choice question needs text for options A to D." };
   }
 
   await prisma.question.create({
@@ -448,26 +452,29 @@ export async function updateQuestionAction(formData: FormData) {
   const optionB = formData.get("optionB") as string;
   const optionC = formData.get("optionC") as string;
   const optionD = formData.get("optionD") as string;
+  const optionE = formData.get("optionE") as string | null;
 
   const existing = await prisma.question.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Question not found." };
   const questionType = formData.get("questionType") === "TITA" ? "TITA" : "MCQ";
-  const invalid = await checkQuestionInput(existing.paperId, questionNumber, correctAnswer, id, questionType);
-  if (invalid) return { success: false, error: invalid };
-  const existingOpts = existing ? parseQuestionOptions(existing.options) : { A: "", B: "", C: "", D: "" };
+  const existingOpts = parseQuestionOptions(existing.options);
 
   const hasNewOptions = [optionA, optionB, optionC, optionD].some(
     (opt) => opt !== undefined && opt !== null && opt.trim() !== ""
   );
 
-  const optionsObj: Record<string, string> = hasNewOptions
-    ? {
-        A: optionA !== undefined && optionA.trim() !== "" ? optionA : existingOpts.A,
-        B: optionB !== undefined && optionB.trim() !== "" ? optionB : existingOpts.B,
-        C: optionC !== undefined && optionC.trim() !== "" ? optionC : existingOpts.C,
-        D: optionD !== undefined && optionD.trim() !== "" ? optionD : existingOpts.D,
-      }
+  // A blank A-D field keeps the stored text. Option E is optional: a sent but empty field removes it.
+  const optionsObj = hasNewOptions
+    ? compactOptions({
+        A: optionA !== undefined && optionA !== null && optionA.trim() !== "" ? optionA : existingOpts.A,
+        B: optionB !== undefined && optionB !== null && optionB.trim() !== "" ? optionB : existingOpts.B,
+        C: optionC !== undefined && optionC !== null && optionC.trim() !== "" ? optionC : existingOpts.C,
+        D: optionD !== undefined && optionD !== null && optionD.trim() !== "" ? optionD : existingOpts.D,
+        E: optionE !== null ? optionE : existingOpts.E,
+      })
     : existingOpts;
+  const invalid = await checkQuestionInput(existing.paperId, questionNumber, correctAnswer, id, questionType, optionsObj);
+  if (invalid) return { success: false, error: invalid };
 
   await prisma.question.update({
     where: { id },
@@ -646,7 +653,7 @@ export async function bulkImportQuestionsAction(
   const toData = (q: NormalizedQuestion) => ({
     questionNumber: q.questionNumber,
     questionText: q.questionText,
-    options: JSON.stringify(q.options),
+    options: JSON.stringify(compactOptions(q.options)),
     correctAnswer: q.correctAnswer,
     questionType: q.questionType,
     explanation: q.explanation || null,
