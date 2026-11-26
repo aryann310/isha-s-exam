@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { isAnswerCorrect, isAnswered, marksFor, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
 import { loadAttemptContext } from "@/server/attempts";
+import { untimedPending, untimedSummary } from "@/server/untimed";
+import { skipUntimedFormAction } from "@/server/actions/untimed";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +35,16 @@ export default async function ResultPage({
         },
       },
       answers: true,
+      untimedAnswers: { select: { questionId: true, selectedAnswer: true } },
     },
   });
 
   if (!attempt || (attempt.status === "IN_PROGRESS" && !isAdmin)) return notFound();
+
+  // Untimed phase: questions left in the test can still be answered (score unchanged); solutions wait for it.
+  const pending = untimedPending(attempt);
+  const ownAttempt = attempt.userId === session.userId;
+  const extra = untimedSummary(attempt.paper, attempt.paper.questions, attempt.untimedAnswers);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -204,14 +212,77 @@ export default async function ResultPage({
             </div>
           )}
 
+          {/* Untimed phase results: shown apart, never part of the score above */}
+          {extra.answered > 0 && (
+            <div className="text-left mb-10 border border-amber-200 rounded-2xl p-6 bg-amber-50">
+              <h3 className="text-sm font-black uppercase tracking-wider text-amber-900 mb-1">
+                Untimed phase {pending ? "(in progress)" : ""}
+              </h3>
+              <p className="text-xs text-amber-800 mb-4">Questions you answered after the test, with no time limit. Not included in your score.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="bg-white rounded-xl border border-amber-200 p-3">
+                  <p className="text-[11px] font-semibold text-gray-500">Answered</p>
+                  <p className="text-xl font-black text-gray-900">{extra.answered} / {attempt.unattempted ?? extra.answered}</p>
+                </div>
+                {pending ? (
+                  <div className="col-span-1 sm:col-span-3 bg-white rounded-xl border border-amber-200 p-3 flex items-center justify-center">
+                    <p className="text-xs text-gray-600">Correct answers and marks show when you finish.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-white rounded-xl border border-amber-200 p-3">
+                      <p className="text-[11px] font-semibold text-gray-500">Correct</p>
+                      <p className="text-xl font-black text-emerald-600">{extra.correct}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-amber-200 p-3">
+                      <p className="text-[11px] font-semibold text-gray-500">Incorrect</p>
+                      <p className="text-xl font-black text-rose-600">{extra.incorrect}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-amber-200 p-3">
+                      <p className="text-[11px] font-semibold text-gray-500">Would have added</p>
+                      <p className="text-xl font-black text-gray-900">{extra.marks > 0 ? "+" : ""}{extra.marks}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {pending && ownAttempt && (
+            <div className="mb-8 border-2 border-gray-950 rounded-2xl p-6 bg-white text-left">
+              <h3 className="font-black text-gray-950 mb-1">
+                {attempt.unattempted} question{attempt.unattempted === 1 ? "" : "s"} left unanswered
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Continue them now with no time limit. Your score above stays as it is. Solutions open when you finish.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  href={`/exam/${attempt.id}/continue`}
+                  className="bg-gray-950 text-white font-bold px-6 py-3 rounded-xl hover:bg-gray-800 text-sm text-center"
+                >
+                  CONTINUE UNANSWERED QUESTIONS &rarr;
+                </Link>
+                <form action={skipUntimedFormAction}>
+                  <input type="hidden" name="attemptId" value={attempt.id} />
+                  <button type="submit" className="w-full sm:w-auto text-sm font-semibold text-gray-700 underline px-2 py-3">
+                    Skip and show solutions
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* Navigation Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {(!pending || isAdmin) && (
             <Link
               href={`/solutions/${attempt.id}`}
               className="bg-gray-950 text-white font-bold px-8 py-3.5 rounded-xl hover:bg-gray-800 transition-colors shadow-md text-sm"
             >
               VIEW COMPLETE SOLUTIONS &rarr;
             </Link>
+            )}
             <Link
               href={`/papers/${attempt.paperId}`}
               className="bg-white text-gray-900 border-2 border-gray-900 font-bold px-8 py-3.5 rounded-xl hover:bg-gray-50 transition-colors text-sm"

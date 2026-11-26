@@ -11,9 +11,11 @@ type FilterType = "ALL" | "CORRECT" | "INCORRECT" | "UNATTEMPTED";
 interface SolutionClientProps {
   questions: Question[];
   answers: AttemptAnswer[];
+  /** Answers given after the test in the untimed phase (not scored). */
+  untimedAnswers?: Array<{ questionId: string; selectedAnswer: string }>;
 }
 
-export function SolutionClient({ questions, answers }: SolutionClientProps) {
+export function SolutionClient({ questions, answers, untimedAnswers = [] }: SolutionClientProps) {
   const [filter, setFilter] = useState<FilterType>("ALL");
 
   const getQuestionStatus = (questionId: string) => {
@@ -58,6 +60,8 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
             const selectedAnswer = ans?.selectedAnswer;
 
             const optionsObj = parseQuestionOptions(q.options);
+            const untimed = untimedAnswers.find((u) => u.questionId === q.id);
+            const untimedRight = untimed ? isAnswerCorrect(q.questionType, q.correctAnswer, untimed.selectedAnswer) : false;
 
             return (
               <div key={q.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xs">
@@ -76,6 +80,12 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
                 </div>
 
                 <div className="p-6">
+                  {untimed && (
+                    <p className={`mb-6 text-sm rounded-lg border px-4 py-2 ${untimedRight ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`}>
+                      Answered after the test (untimed, not scored): <strong className="font-mono">{untimed.selectedAnswer}</strong>{" "}
+                      {untimedRight ? "✓ Correct" : "✗ Incorrect"}
+                    </p>
+                  )}
                   <div
                     className="prose max-w-none text-gray-900 text-lg mb-8 leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.questionText) }}

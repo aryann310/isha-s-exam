@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { SolutionClient } from "@/components/exam/solution-client";
 import { loadAttemptContext } from "@/server/attempts";
+import { untimedPending } from "@/server/untimed";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +37,13 @@ export default async function SolutionsPage({
         },
       },
       answers: true,
+      untimedAnswers: { select: { questionId: true, selectedAnswer: true } },
     },
   });
 
   if (!attempt || (attempt.status === "IN_PROGRESS" && !isAdmin)) return notFound();
+  // Solutions stay closed while the untimed phase for the unanswered questions is still open.
+  if (untimedPending(attempt) && !isAdmin) redirect(`/results/${attempt.id}`);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -53,7 +57,7 @@ export default async function SolutionsPage({
       </header>
       
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8">
-        <SolutionClient questions={attempt.paper.questions} answers={attempt.answers} />
+        <SolutionClient questions={attempt.paper.questions} answers={attempt.answers} untimedAnswers={attempt.untimedAnswers} />
       </main>
     </div>
   );

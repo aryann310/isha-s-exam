@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { hasSectionMarks } from "@/lib/exam-patterns";
+import { paperProgress } from "@/server/untimed";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,16 @@ export default async function ExamPapersPage({
   });
 
   if (!exam) return notFound();
+
+  // This student's progress per paper: DONE once a test (mock or practice) is finished, CONTINUE while a
+  // finished mock still has unanswered questions waiting in the untimed phase.
+  const myAttempts = await prisma.attempt.findMany({
+    where: { userId: session.userId as string, paperId: { in: exam.papers.map((p) => p.id) } },
+    select: { id: true, paperId: true, mode: true, status: true, unattempted: true, untimedEndedAt: true, submittedAt: true, startedAt: true },
+  });
+  const progress = new Map(
+    exam.papers.map((p) => [p.id, paperProgress(myAttempts.filter((a) => a.paperId === p.id))])
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -128,6 +139,16 @@ export default async function ExamPapersPage({
                         {paper.shift}
                       </span>
                     )}
+                    {progress.get(paper.id)?.kind === "done" && (
+                      <span className="text-[10px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded">
+                        ✓ Done
+                      </span>
+                    )}
+                    {progress.get(paper.id)?.kind === "continue" && (
+                      <span className="text-[10px] font-black uppercase bg-amber-500 text-white px-2 py-0.5 rounded">
+                        Continue
+                      </span>
+                    )}
                     {!paper.isActive && (
                       <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
                         DRAFT (Admin View)
@@ -151,12 +172,27 @@ export default async function ExamPapersPage({
                     </p>
                   )}
                 </div>
-                <Link
-                  href={`/papers/${paper.id}`}
-                  className="inline-flex items-center justify-center bg-gray-950 text-white rounded-xl px-6 py-2.5 text-xs font-bold hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-950 shrink-0 shadow-xs group"
-                >
-                  START TEST &rarr;
-                </Link>
+                {(() => {
+                  const state = progress.get(paper.id);
+                  return (
+                    <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                      {state?.kind === "continue" && (
+                        <Link
+                          href={`/exam/${state.attemptId}/continue`}
+                          className="inline-flex items-center justify-center bg-amber-500 text-white rounded-xl px-6 py-2.5 text-xs font-bold hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                        >
+                          CONTINUE {state.left} UNANSWERED &rarr;
+                        </Link>
+                      )}
+                      <Link
+                        href={`/papers/${paper.id}`}
+                        className="inline-flex items-center justify-center bg-gray-950 text-white rounded-xl px-6 py-2.5 text-xs font-bold hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-950 shrink-0 shadow-xs group"
+                      >
+                        {state ? "TAKE AGAIN" : "START TEST"} &rarr;
+                      </Link>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

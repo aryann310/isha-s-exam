@@ -74,6 +74,7 @@ model Question {
   
   paper           Paper          @relation(fields: [paperId], references: [id], onDelete: Cascade)
   attemptAnswers  AttemptAnswer[]
+  untimedAnswers  UntimedAnswer[]
 
   @@index([paperId, questionNumber])
 }
@@ -98,10 +99,15 @@ model Attempt {
   currentSection      Int       @default(0)
   sectionStartedAt    DateTime?
   sectionExtraSeconds Int       @default(0) // admin time extension for the current section
+  // Untimed phase after a mock: the candidate may answer the questions left unanswered, with no time limit.
+  // Those answers are kept apart (UntimedAnswer) and never change the score. Set when the phase is finished
+  // or skipped; solutions stay hidden until then.
+  untimedEndedAt      DateTime?
   
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   paper         Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
   answers       AttemptAnswer[]
+  untimedAnswers UntimedAnswer[]
 
   @@index([status])
   @@index([userId])
@@ -121,6 +127,22 @@ model AttemptAnswer {
   attempt          Attempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question         Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
   
+  @@unique([attemptId, questionId])
+  @@index([questionId])
+}
+
+/// An answer given after the mock ended, in the untimed phase, to a question left unanswered in the test.
+/// Correctness is worked out when shown (an answer-key fix then applies here too).
+model UntimedAnswer {
+  id             String   @id @default(cuid())
+  attemptId      String
+  questionId     String
+  selectedAnswer String
+  answeredAt     DateTime @default(now())
+
+  attempt  Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
   @@unique([attemptId, questionId])
   @@index([questionId])
 }
