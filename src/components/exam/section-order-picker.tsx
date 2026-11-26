@@ -6,13 +6,13 @@ import { useState } from "react";
 export function SectionOrderPicker({ orders }: { orders: string[][] }) {
   const [choice, setChoice] = useState(0);
   return (
-    <fieldset className="border border-gray-300 rounded p-4">
+    <fieldset className="border border-exam-line bg-exam-tint/50 rounded-lg p-4">
       <legend className="px-2 font-bold">Choose your section order</legend>
       <p className="text-xs text-gray-600 mb-3">This cannot be changed once the test begins.</p>
       <div className="space-y-2">
         {orders.map((order, i) => (
           <label key={order.join("|")} className="flex items-start gap-2 cursor-pointer">
-            <input type="radio" name="sectionOrderChoice" checked={choice === i} onChange={() => setChoice(i)} className="mt-1" />
+            <input type="radio" name="sectionOrderChoice" checked={choice === i} onChange={() => setChoice(i)} className="mt-1 accent-exam-primary" />
             <span>{order.map((n, j) => `${j + 1}. ${n}`).join("   →   ")}</span>
           </label>
         ))}

@@ -7,6 +7,8 @@ import { saveAnswerAction, submitExamAction } from "@/server/actions/engine";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 import { isAnswerCorrect, marksFor } from "@/lib/exam-patterns";
+import type { ExamTheme } from "@/lib/exam-theme";
+import { AlertTriangle, X } from "lucide-react";
 
 type OptionType = { [key: string]: string };
 
@@ -15,9 +17,11 @@ interface ExamEngineProps {
   paper: Paper;
   questions: Question[];
   initialAnswers: AttemptAnswer[];
+  /** Colours and font of this exam. */
+  theme: ExamTheme;
 }
 
-export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEngineProps) {
+export function ExamEngine({ attempt, paper, questions, initialAnswers, theme }: ExamEngineProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -112,12 +116,12 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
 
   if (!questions || questions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center">
+      <div data-exam-theme={theme} className="flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center font-exam">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">No Questions Found</h2>
         <p className="text-gray-500 mb-6">This paper currently has no questions assigned to it.</p>
         <button
           onClick={() => router.push("/exams")}
-          className="bg-gray-900 text-white px-6 py-2 rounded-lg font-medium"
+          className="bg-exam-primary hover:bg-exam-primary-hover text-white px-6 py-2 rounded-lg font-medium"
         >
           Return Home
         </button>
@@ -184,42 +188,43 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
     (q) => visited.has(q.id) && !results[q.id]
   ).length;
   const notVisitedCount = questions.length - visited.size;
+  const correctCount = Object.values(results).filter((r) => r.isCorrect).length;
 
   return (
-    <div className="flex flex-col h-screen bg-white select-none">
+    <div data-exam-theme={theme} className="flex flex-col h-screen bg-white select-none font-exam">
       {/* HEADER */}
-      <header className="flex-none bg-gray-950 text-white px-4 md:px-6 py-3.5 flex justify-between items-center shadow-md z-20">
+      <header className="flex-none bg-exam-dark text-white px-4 md:px-6 py-3 flex justify-between items-center gap-3 z-20">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-lg md:text-xl font-bold tracking-tight">{paper.title}</h1>
-            <p className="text-xs text-gray-400 font-medium">
-              Examination Portal • {paper.totalQuestions} Questions
+            <h1 className="text-base md:text-lg font-semibold">{paper.title}</h1>
+            <p className="text-xs text-exam-on-dark">
+              Practice · {paper.totalQuestions} questions · answers shown as you go
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 md:gap-6">
           {saveStatus === "saving" && (
-            <span className="hidden sm:inline-block text-xs text-blue-300 animate-pulse">Saving...</span>
+            <span className="hidden sm:inline-block text-xs text-exam-on-dark animate-pulse">Saving…</span>
           )}
           {saveStatus === "saved" && (
-            <span className="hidden sm:inline-block text-xs text-emerald-400 font-medium">Saved ✓</span>
+            <span className="hidden sm:inline-block text-xs text-exam-on-dark font-medium">Saved</span>
           )}
           {saveStatus === "error" && (
-            <span className="hidden sm:inline-block text-xs text-red-400 font-medium">Connection interrupted</span>
+            <span className="hidden sm:inline-block text-xs text-white font-semibold">Connection interrupted</span>
           )}
 
           {timeLeft !== null && (
             <div
-              className={`text-base md:text-xl font-mono font-bold px-3.5 py-1.5 rounded-lg border ${
+              className={`text-base md:text-lg tabular-nums font-bold px-3 py-1 rounded-lg border ${
                 timeLeft < 300
-                  ? "bg-red-950 border-red-500 text-red-400 animate-pulse"
+                  ? "bg-white border-white text-st-not-answered"
                   : timeLeft < 600
-                  ? "bg-amber-950 border-amber-500 text-amber-300"
-                  : "bg-gray-900 border-gray-800 text-white"
+                  ? "bg-white/15 border-amber-300 text-amber-100"
+                  : "bg-white/10 border-white/20 text-white"
               }`}
             >
-              <span className="text-xs mr-1 opacity-70 hidden sm:inline">TIME LEFT</span>
+              <span className="text-xs font-medium mr-1.5 opacity-80 hidden sm:inline">Time left</span>
               {formatTime(timeLeft)}
             </div>
           )}
@@ -227,9 +232,9 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
           <button
             onClick={() => setShowSubmitModal(true)}
             disabled={submitting}
-            className="bg-white text-gray-950 font-bold px-4 md:px-6 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors shadow-sm disabled:opacity-50"
+            className="bg-white text-exam-dark font-bold px-4 md:px-5 py-2 rounded-md text-sm hover:bg-exam-tint transition-colors disabled:opacity-50"
           >
-            {submitting ? "Submitting..." : "SUBMIT EXAM"}
+            {submitting ? "Submitting…" : "Submit test"}
           </button>
         </div>
       </header>
@@ -242,11 +247,11 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
             {/* Question Meta Bar */}
             <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
               <div className="flex items-center gap-3">
-                <span className="text-xs font-bold uppercase tracking-wider bg-gray-900 text-white px-3 py-1 rounded">
-                  Q {currentQuestion.questionNumber} / {questions.length}
+                <span className="text-sm font-bold bg-exam-dark text-white px-3 py-1 rounded-md">
+                  Question {currentQuestion.questionNumber} of {questions.length}
                 </span>
                 {currentQuestion.section && (
-                  <span className="text-xs font-semibold bg-gray-100 text-gray-700 px-3 py-1 rounded-full border border-gray-200">
+                  <span className="text-xs font-semibold bg-exam-tint text-exam-dark px-3 py-1 rounded-full border border-exam-line">
                     {currentQuestion.section}
                   </span>
                 )}
@@ -264,14 +269,14 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
 
             {/* Question Text */}
             <div
-              className="prose max-w-none text-gray-900 text-lg md:text-xl font-normal leading-relaxed mb-8"
+              className="prose max-w-none text-gray-900 text-[17px] md:text-lg leading-relaxed mb-8"
               dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(currentQuestion.questionText) }}
             />
 
             {/* Typed answer (TITA) */}
             {currentQuestion.questionType === "TITA" && (
               <div className="max-w-sm space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Type your answer</label>
+                <label className="block text-sm font-semibold text-gray-700">Type your answer</label>
                 <input
                   value={answers[currentQuestion.id] ?? ""}
                   disabled={isConfirmed}
@@ -285,7 +290,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                       ? results[currentQuestion.id]?.isCorrect
                         ? "border-emerald-500 bg-emerald-50"
                         : "border-rose-500 bg-rose-50"
-                      : "border-gray-300 focus:border-blue-600 outline-none"
+                      : "border-gray-300 focus:border-exam-primary outline-none"
                   }`}
                 />
                 {isConfirmed && !results[currentQuestion.id]?.isCorrect && (
@@ -314,7 +319,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                   }
                 } else {
                   if (isSelected) {
-                    containerClass += "bg-blue-50 border-blue-600 text-blue-950 shadow-sm cursor-pointer";
+                    containerClass += "bg-exam-tint border-exam-primary text-gray-900 cursor-pointer";
                   } else {
                     containerClass += "bg-white border-gray-200 hover:border-gray-400 text-gray-800 cursor-pointer";
                   }
@@ -336,7 +341,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                             ? "bg-rose-600 text-white border-rose-600"
                             : "border-gray-300 text-gray-400 bg-white"
                           : isSelected
-                          ? "bg-blue-600 text-white border-blue-600"
+                          ? "bg-exam-primary text-white border-exam-primary"
                           : "border-gray-400 text-gray-700 bg-white"
                       }`}
                     >
@@ -358,17 +363,17 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                   type="button"
                   onClick={handleConfirmAnswer}
                   disabled={!answers[currentQuestion.id] || confirming}
-                  className="bg-gray-900 text-white font-bold text-sm px-8 py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 transition-colors shadow-sm flex items-center gap-2"
+                  className="bg-exam-primary text-white font-bold text-sm px-8 py-3 rounded-lg hover:bg-exam-primary-hover disabled:opacity-40 transition-colors flex items-center gap-2"
                 >
-                  {confirming ? "Checking..." : "CONFIRM ANSWER"}
+                  {confirming ? "Checking…" : "Confirm answer"}
                 </button>
                 {!answers[currentQuestion.id] ? (
                   <span className="text-xs text-gray-500 font-medium">
-                    {currentQuestion.questionType === "TITA" ? "Type your answer above" : "Select an option above"}, then click <strong>CONFIRM ANSWER</strong> to verify.
+                    {currentQuestion.questionType === "TITA" ? "Type your answer above" : "Select an option above"}, then click <strong>Confirm answer</strong> to check it.
                   </span>
                 ) : (
-                  <span className="text-xs text-blue-700 font-bold">
-                    {currentQuestion.questionType === "TITA" ? "Answer" : "Option"} {answers[currentQuestion.id]} selected. Click CONFIRM ANSWER to reveal the solution.
+                  <span className="text-xs text-exam-primary font-semibold">
+                    {currentQuestion.questionType === "TITA" ? "Answer" : "Option"} {answers[currentQuestion.id]} selected. Click Confirm answer to see the solution.
                   </span>
                 )}
               </div>
@@ -380,13 +385,13 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-200">
                   <div className="space-y-1">
                     <span
-                      className={`text-2xl font-black ${
+                      className={`text-2xl font-bold ${
                         results[currentQuestion.id].isCorrect
                           ? "text-emerald-600"
                           : "text-rose-600"
                       }`}
                     >
-                      {results[currentQuestion.id].isCorrect ? "✓ Correct" : "❌ Incorrect"}
+                      {results[currentQuestion.id].isCorrect ? "Correct" : "Incorrect"}
                     </span>
                     <div className="text-sm text-gray-700 font-medium">
                       Your Answer:{" "}
@@ -406,25 +411,25 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                     <button
                       type="button"
                       onClick={() => navigateTo(currentIndex + 1)}
-                      className="bg-gray-900 text-white font-bold text-sm px-7 py-3 rounded-xl hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-2 self-start sm:self-auto"
+                      className="bg-exam-primary text-white font-bold text-sm px-7 py-3 rounded-lg hover:bg-exam-primary-hover transition-colors flex items-center gap-2 self-start sm:self-auto"
                     >
-                      NEXT QUESTION &rarr;
+                      Next question &rarr;
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setShowSubmitModal(true)}
-                      className="bg-emerald-600 text-white font-bold text-sm px-7 py-3 rounded-xl hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2 self-start sm:self-auto"
+                      className="bg-emerald-600 text-white font-bold text-sm px-7 py-3 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 self-start sm:self-auto"
                     >
-                      SUBMIT EXAM &rarr;
+                      Submit test &rarr;
                     </button>
                   )}
                 </div>
 
                 {results[currentQuestion.id].explanation && (
                   <div className="mt-5 pt-1">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 mb-2">
-                      Detailed Solution:
+                    <h4 className="text-sm font-bold text-gray-900 mb-2">
+                      Solution
                     </h4>
                     <div
                       className="prose max-w-none text-gray-800 text-base leading-relaxed"
@@ -445,7 +450,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
               disabled={currentIndex === 0}
               className="px-5 py-2.5 border border-gray-300 rounded-lg font-bold text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             >
-              &larr; PREVIOUS
+              &larr; Previous
             </button>
 
             {/* Mobile Toggle Button for Questions Drawer */}
@@ -459,9 +464,9 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
             <button
               onClick={() => navigateTo(Math.min(questions.length - 1, currentIndex + 1))}
               disabled={currentIndex === questions.length - 1}
-              className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-bold text-sm hover:bg-gray-800 disabled:opacity-40 transition-colors"
+              className="px-6 py-2.5 bg-exam-primary text-white rounded-lg font-bold text-sm hover:bg-exam-primary-hover disabled:opacity-40 transition-colors"
             >
-              NEXT &rarr;
+              Next &rarr;
             </button>
           </div>
         </div>
@@ -475,26 +480,29 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
           {/* Header */}
           <div className="p-4 border-b border-gray-200 bg-white flex justify-between items-center shadow-xs">
             <div>
-              <h3 className="font-bold text-gray-900 text-sm tracking-wide">QUESTION PALETTE</h3>
+              <h3 className="font-bold text-gray-900 text-sm">Questions</h3>
               <p className="text-xs text-gray-500 mt-0.5">
                 {answeredCount} of {questions.length} confirmed
               </p>
             </div>
             <button
               onClick={() => setMobileDrawerOpen(false)}
-              className="md:hidden text-gray-500 hover:text-gray-900 text-sm p-1 font-bold"
+              aria-label="Close questions"
+              className="md:hidden text-gray-600 hover:text-gray-900 p-1"
             >
-              ✕
+              <X className="w-5 h-5" aria-hidden />
             </button>
           </div>
 
           {/* Palette Legend */}
           <div className="p-3 bg-gray-100 border-b border-gray-200 grid grid-cols-2 gap-2 text-xs font-medium text-gray-600">
             <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold">
-                ✓
-              </span>
-              <span>Confirmed ({answeredCount})</span>
+              <span className="w-3.5 h-3.5 rounded bg-emerald-600"></span>
+              <span>Correct ({correctCount})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3.5 h-3.5 rounded bg-rose-600"></span>
+              <span>Wrong ({answeredCount - correctCount})</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3.5 h-3.5 rounded bg-amber-100 border border-amber-400"></span>
@@ -503,10 +511,6 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
             <div className="flex items-center gap-2">
               <span className="w-3.5 h-3.5 rounded bg-white border border-gray-300"></span>
               <span>Not Visited ({notVisitedCount})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded border-2 border-gray-950 bg-gray-200"></span>
-              <span>Current</span>
             </div>
           </div>
 
@@ -522,7 +526,7 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                   "w-11 h-11 flex flex-col items-center justify-center rounded-lg font-bold text-xs transition-all relative ";
 
                 if (isCurrent) {
-                  btnClass += "ring-2 ring-gray-950 ring-offset-2 z-10 ";
+                  btnClass += "ring-2 ring-exam-primary ring-offset-2 z-10 ";
                 }
 
                 if (isAns) {
@@ -565,28 +569,28 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
       {showSubmitModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-gray-200">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Submit Examination?</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Submit the test?</h3>
             <p className="text-sm text-gray-500 mb-6">
               Review your question status summary before finalizing your submission.
             </p>
 
             <div className="grid grid-cols-3 gap-3 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 text-center">
               <div>
-                <p className="text-2xl font-black text-blue-600">{answeredCount}</p>
-                <p className="text-xs font-semibold text-gray-600 mt-1 uppercase">Confirmed</p>
+                <p className="text-2xl font-bold text-exam-primary">{answeredCount}</p>
+                <p className="text-xs font-semibold text-gray-600 mt-1">Confirmed</p>
               </div>
               <div className="border-x border-gray-200">
-                <p className="text-2xl font-black text-amber-600">{unansweredCount}</p>
-                <p className="text-xs font-semibold text-gray-600 mt-1 uppercase">Unanswered</p>
+                <p className="text-2xl font-bold text-amber-700">{unansweredCount}</p>
+                <p className="text-xs font-semibold text-gray-600 mt-1">Unanswered</p>
               </div>
               <div>
-                <p className="text-2xl font-black text-gray-500">{notVisitedCount}</p>
-                <p className="text-xs font-semibold text-gray-600 mt-1 uppercase">Not Visited</p>
+                <p className="text-2xl font-bold text-gray-600">{notVisitedCount}</p>
+                <p className="text-xs font-semibold text-gray-600 mt-1">Not visited</p>
               </div>
             </div>
 
             <p className="text-xs text-rose-600 font-semibold mb-6 flex items-center gap-1.5">
-              <span>⚠</span> Once submitted, you cannot change your answers.
+              <AlertTriangle className="w-4 h-4" aria-hidden /> Once submitted, you cannot change your answers.
             </p>
 
             <div className="flex gap-3 justify-end">
@@ -596,15 +600,15 @@ export function ExamEngine({ attempt, paper, questions, initialAnswers }: ExamEn
                 disabled={submitting}
                 className="px-5 py-2.5 rounded-lg border border-gray-300 font-semibold text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
-                CANCEL
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmedSubmit}
                 disabled={submitting}
-                className="px-6 py-2.5 rounded-lg bg-gray-900 text-white font-bold text-sm hover:bg-gray-800 transition-colors"
+                className="px-6 py-2.5 rounded-lg bg-exam-primary text-white font-bold text-sm hover:bg-exam-primary-hover transition-colors"
               >
-                {submitting ? "Submitting..." : "SUBMIT EXAM"}
+                {submitting ? "Submitting…" : "Submit test"}
               </button>
             </div>
           </div>

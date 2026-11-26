@@ -6,7 +6,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
+        <h1 className="font-heading text-2xl font-semibold text-slate-900">{title}</h1>
         {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -23,7 +23,7 @@ export function Card({ title, description, action, children, className = "", bod
   bodyClassName?: string;
 }) {
   return (
-    <section className={`rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
+    <section className={`rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(28,31,35,0.04)] ${className}`}>
       {(title || action) && (
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
           <div>
@@ -52,7 +52,7 @@ export function StatCard({ label, value, hint, href, tone = "default" }: {
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </>
   );
-  const cls = "block rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
+  const cls = "block rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(28,31,35,0.04)]";
   return href ? (
     <Link href={href} className={`${cls} transition-colors hover:border-slate-300`}>
       {body}
@@ -122,7 +122,7 @@ export function BarChart({ data, height = 160, valueLabel = "" }: {
     <div>
       <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }} role="img">
         {[0.25, 0.5, 0.75, 1].map((f) => (
-          <line key={f} x1="0" x2="100" y1={height - f * (height - 4)} y2={height - f * (height - 4)} stroke="#f1f5f9" strokeWidth="0.4" vectorEffect="non-scaling-stroke" />
+          <line key={f} x1="0" x2="100" y1={height - f * (height - 4)} y2={height - f * (height - 4)} stroke="#efefec" strokeWidth="0.4" vectorEffect="non-scaling-stroke" />
         ))}
         {data.map((d, i) => {
           const h = (d.value / max) * (height - 4);
@@ -132,13 +132,13 @@ export function BarChart({ data, height = 160, valueLabel = "" }: {
           return (
             <g key={i}>
               <title>{`${d.label}: ${d.value}${valueLabel}${d.secondary !== undefined ? ` (${d.secondary} completed)` : ""}`}</title>
-              <rect x={x} y={height - h} width={w} height={Math.max(h, d.value > 0 ? 1 : 0)} rx="0.6" fill="#cbd5e1" />
-              {d.secondary !== undefined && <rect x={x} y={height - h2} width={w} height={Math.max(h2, d.secondary > 0 ? 1 : 0)} rx="0.6" fill="#0f172a" />}
+              <rect x={x} y={height - h} width={w} height={Math.max(h, d.value > 0 ? 1 : 0)} rx="0.6" fill="#d0d0ca" />
+              {d.secondary !== undefined && <rect x={x} y={height - h2} width={w} height={Math.max(h2, d.secondary > 0 ? 1 : 0)} rx="0.6" fill="#1c1f23" />}
             </g>
           );
         })}
       </svg>
-      <div className="mt-2 flex justify-between text-[10px] text-slate-400">
+      <div className="mt-2 flex justify-between text-[10px] text-slate-500">
         <span>{data[0]?.label}</span>
         <span>{data[Math.floor(data.length / 2)]?.label}</span>
         <span>{data[data.length - 1]?.label}</span>

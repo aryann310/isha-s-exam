@@ -44,7 +44,7 @@ export function AdminSidebar({ adminName, liveCount, logout }: { adminName: stri
     <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
       {NAV.map((g) => (
         <div key={g.group}>
-          <p className="px-2 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">{g.group}</p>
+          <p className="px-2 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">{g.group}</p>
           <ul className="space-y-0.5">
             {g.items.map((item) => {
               const active = isActive(item.href, "exact" in item ? item.exact : false);
@@ -86,14 +86,14 @@ export function AdminSidebar({ adminName, liveCount, logout }: { adminName: stri
           <LogOut className="size-4" strokeWidth={1.75} /> Log out
         </button>
       </form>
-      <p className="truncate px-2 pt-1 text-xs text-slate-400">Signed in as {adminName}</p>
+      <p className="truncate px-2 pt-1 text-xs text-slate-500">Signed in as {adminName}</p>
     </div>
   );
 
   const brand = (
     <Link href="/admin" className="flex items-center gap-2">
-      <span className="flex size-7 items-center justify-center rounded-lg bg-slate-900 text-xs font-semibold text-white">EP</span>
-      <span className="text-sm font-semibold text-slate-900">Exam Portal <span className="font-normal text-slate-400">Admin</span></span>
+      <span className="flex size-8 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">M</span>
+      <span className="text-sm font-semibold text-slate-900">Mock Test Portal <span className="font-normal text-slate-500">Admin</span></span>
     </Link>
   );
 

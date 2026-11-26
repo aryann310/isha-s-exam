@@ -111,7 +111,7 @@ export function ExamCalculator({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed z-50 top-28 right-4 md:right-[22rem] w-72 bg-gray-200 border border-gray-400 rounded shadow-2xl select-none">
-      <div className="flex justify-between items-center bg-[#1f4e79] text-white px-3 py-1.5 rounded-t">
+      <div className="flex justify-between items-center bg-exam-dark text-white px-3 py-1.5 rounded-t">
         <span className="text-xs font-bold">Calculator</span>
         <button onClick={onClose} className="text-white/90 hover:text-white text-sm font-bold" aria-label="Close calculator">
           ✕
@@ -131,7 +131,7 @@ export function ExamCalculator({ onClose }: { onClose: () => void }) {
               key={label}
               type="button"
               onClick={fn}
-              className={`${key} ${kind === "op" ? "text-[#1f4e79]" : ""} ${kind === "eq" ? "row-span-2 h-auto bg-none bg-[#1f4e79] text-white hover:bg-[#173d60]" : ""} ${
+              className={`${key} ${kind === "op" ? "text-exam-dark" : ""} ${kind === "eq" ? "row-span-2 h-auto bg-none bg-exam-dark text-white hover:opacity-90" : ""} ${
                 kind === "zero" ? "col-span-2" : ""
               }`}
             >

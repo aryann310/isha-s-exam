@@ -6,6 +6,7 @@ import { startExamAction } from "@/server/actions/exam";
 import { getPattern, marksFor, patternInstructions, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
 import { PALETTE_LABELS, PALETTE_ORDER, PaletteSymbol } from "@/components/exam/palette-symbol";
 import { SectionOrderPicker } from "@/components/exam/section-order-picker";
+import { themeForPaper } from "@/lib/exam-theme";
 
 export const dynamic = "force-dynamic";
 
@@ -61,53 +62,57 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
   const candidate = (session.name as string) || (session.username as string) || "Candidate";
 
   return (
-    <div className="min-h-screen bg-[#f3f6f9] flex flex-col">
-      <header className="bg-[#1f4e79] text-white px-6 py-3 flex justify-between items-center">
-        <div>
-          <p className="text-xs uppercase tracking-wider opacity-80">{paper.exam.name}</p>
-          <h1 className="text-lg font-bold">{paper.title}</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right text-sm">
-            <p className="opacity-80 text-xs">Candidate</p>
-            <p className="font-semibold">{candidate}</p>
+    <div data-exam-theme={themeForPaper(paper)} className="min-h-screen bg-gray-50 flex flex-col font-exam">
+      <header className="bg-exam-dark text-white">
+        <div className="max-w-4xl mx-auto px-4 md:px-8 py-3 flex flex-wrap justify-between items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="shrink-0 px-2 py-1 rounded bg-white text-exam-dark text-xs font-bold leading-none">{pattern.label}</span>
+            <h1 className="font-semibold truncate">{paper.title}</h1>
           </div>
-          <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center text-lg font-bold">
-            {candidate.slice(0, 1).toUpperCase()}
+          <div className="flex items-center gap-3">
+            <div className="text-right text-sm">
+              <p className="text-exam-on-dark text-xs">Candidate</p>
+              <p className="font-semibold">{candidate}</p>
+            </div>
+            <div className="w-10 h-10 rounded-md bg-white/15 flex items-center justify-center text-lg font-bold">
+              {candidate.slice(0, 1).toUpperCase()}
+            </div>
           </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-8">
-        <div className="bg-white border border-gray-300 rounded shadow-sm">
-          <h2 className="px-6 py-3 border-b border-gray-300 bg-gray-50 font-bold text-gray-900">General Instructions</h2>
-          <div className="p-6 space-y-6 text-sm text-gray-800 leading-relaxed">
-            <table className="w-full border border-gray-300 text-left">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="border border-gray-300 px-3 py-2">Section</th>
-                  <th className="border border-gray-300 px-3 py-2 w-28">Questions</th>
-                  {sectional && <th className="border border-gray-300 px-3 py-2 w-28">Time</th>}
-                  <th className="border border-gray-300 px-3 py-2">Marks (correct / wrong)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sections.map((s) => (
-                  <tr key={s.name}>
-                    <td className="border border-gray-300 px-3 py-2">{s.name}</td>
-                    <td className="border border-gray-300 px-3 py-2">{counts.get(s.name) ?? 0}</td>
-                    {sectional && <td className="border border-gray-300 px-3 py-2">{Math.round((s.durationSeconds ?? 0) / 60)} min</td>}
-                    <td className="border border-gray-300 px-3 py-2">{sectionMarks.get(s.name)}</td>
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <h2 className="px-6 py-3.5 border-b border-exam-line bg-exam-tint font-bold text-exam-dark">General instructions</h2>
+          <div className="p-6 space-y-6 text-[15px] text-gray-800 leading-relaxed">
+            <div className="overflow-x-auto">
+              <table className="w-full border border-gray-300 text-left text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="border border-gray-300 px-3 py-2">Section</th>
+                    <th className="border border-gray-300 px-3 py-2 w-28">Questions</th>
+                    {sectional && <th className="border border-gray-300 px-3 py-2 w-28">Time</th>}
+                    <th className="border border-gray-300 px-3 py-2">Marks (correct / wrong)</th>
                   </tr>
-                ))}
-                <tr className="font-bold bg-gray-50">
-                  <td className="border border-gray-300 px-3 py-2">Total</td>
-                  <td className="border border-gray-300 px-3 py-2">{paper.questions.length}</td>
-                  {sectional && <td className="border border-gray-300 px-3 py-2">{totalMinutes} min</td>}
-                  <td className="border border-gray-300 px-3 py-2">{maxMarks} marks</td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sections.map((s) => (
+                    <tr key={s.name}>
+                      <td className="border border-gray-300 px-3 py-2">{s.name}</td>
+                      <td className="border border-gray-300 px-3 py-2">{counts.get(s.name) ?? 0}</td>
+                      {sectional && <td className="border border-gray-300 px-3 py-2">{Math.round((s.durationSeconds ?? 0) / 60)} min</td>}
+                      <td className="border border-gray-300 px-3 py-2">{sectionMarks.get(s.name)}</td>
+                    </tr>
+                  ))}
+                  <tr className="font-bold bg-gray-50">
+                    <td className="border border-gray-300 px-3 py-2">Total</td>
+                    <td className="border border-gray-300 px-3 py-2">{paper.questions.length}</td>
+                    {sectional && <td className="border border-gray-300 px-3 py-2">{totalMinutes} min</td>}
+                    <td className="border border-gray-300 px-3 py-2">{maxMarks} marks</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             {!sectional && (
               <p>
                 <strong>Total time: {totalMinutes} minutes.</strong>
@@ -142,7 +147,7 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
               {chooseOrder && <SectionOrderPicker orders={orders} />}
 
               <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" name="acceptInstructions" required className="mt-1 w-4 h-4" />
+                <input type="checkbox" name="acceptInstructions" required className="mt-1 w-4 h-4 accent-exam-primary" />
                 <span>
                   I have read and understood the instructions. I agree that the test timer starts as soon as I click{" "}
                   <strong>I am ready to begin</strong>.
@@ -150,10 +155,10 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
               </label>
 
               <div className="flex justify-between items-center gap-3">
-                <Link href={`/papers/${paper.id}`} className="text-sm text-gray-600 hover:text-black">
+                <Link href={`/papers/${paper.id}`} className="text-sm text-gray-600 hover:text-gray-900">
                   &larr; Previous
                 </Link>
-                <button type="submit" className="bg-[#1f4e79] hover:bg-[#173d60] text-white font-bold px-6 py-2.5 rounded">
+                <button type="submit" className="bg-exam-primary hover:bg-exam-primary-hover text-white font-bold px-6 h-11 rounded-md">
                   I am ready to begin
                 </button>
               </div>

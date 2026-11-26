@@ -1,17 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 import "katex/dist/katex.min.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Mock Test Portal",
@@ -24,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}>
+    <html lang="en" suppressHydrationWarning className={`${fontVariables} antialiased h-full`}>
       <body suppressHydrationWarning className="min-h-full flex flex-col">{children}</body>
     </html>
   );

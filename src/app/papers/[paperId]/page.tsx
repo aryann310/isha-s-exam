@@ -1,9 +1,11 @@
-import { getSession, deleteSession } from "@/lib/auth/session";
+import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { startExamAction } from "@/server/actions/exam";
 import { getPattern, resolvePaperSections } from "@/lib/exam-patterns";
+import { themeForPaper } from "@/lib/exam-theme";
+import { SiteHeader } from "@/components/site/site-header";
 
 export const dynamic = "force-dynamic";
 
@@ -67,97 +69,80 @@ export default async function PaperInfoPage({
       ? Math.round(sections.reduce((t, s) => t + (s.durationSeconds ?? 0), 0) / 60)
       : Math.round(paper.durationSeconds / 60);
 
+  const name = (session.username as string) || (session.name as string) || "Student";
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Link href={`/exams/${paper.exam.slug}`} className="text-sm font-medium text-gray-500 hover:text-black">
-            &larr; Back
-          </Link>
-          <h1 className="text-xl font-bold tracking-tight">{paper.exam.name}</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">Logged in</span>
-          <form
-            action={async () => {
-              "use server";
-              await deleteSession();
-              redirect("/login");
-            }}
-          >
-            <button className="text-sm font-medium text-gray-700 hover:text-black">
-              Logout
-            </button>
-          </form>
-        </div>
-      </header>
-      
-      <main className="flex-1 max-w-3xl w-full mx-auto p-6 md:p-12">
-        <div className="bg-white border border-gray-200 rounded-xl p-8 md:p-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">{paper.title}</h2>
-          <p className="text-gray-500 mb-2">Previous Year Question Paper</p>
-          <p className="text-sm text-gray-600 mb-8">
-            <span className="font-bold text-gray-900">{pattern.label} pattern.</span> {pattern.summary}
-          </p>
+      <SiteHeader name={name} isAdmin={isAdmin} back={{ href: `/exams/${paper.exam.slug}`, label: `${paper.exam.name} papers` }} />
 
-          <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500 mb-1">Questions</p>
-              <p className="text-2xl font-semibold text-gray-900">{paper.totalQuestions}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500 mb-1">Duration</p>
-              <p className="text-2xl font-semibold text-gray-900">{mockMinutes} Minutes</p>
-            </div>
+      <main data-exam-theme={themeForPaper(paper, paper.exam.name)} className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10">
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <div className="bg-exam-dark text-white px-6 sm:px-8 py-6">
+            <span className="inline-block px-2 py-1 rounded bg-white text-exam-dark text-xs font-bold leading-none font-exam">{pattern.label}</span>
+            <h1 className="font-exam text-2xl sm:text-3xl font-bold mt-3">{paper.title}</h1>
+            <p className="text-exam-on-dark text-sm mt-2 leading-relaxed">{pattern.summary}</p>
           </div>
 
-          {sections.length > 0 && (
-            <div className="mb-10">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Sections</h3>
-              <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
-                {sections.map((section) => (
-                  <li key={section.name} className="flex justify-between gap-4 px-4 py-2.5">
-                    <span className="text-gray-800">{section.name}</span>
-                    <span className="text-gray-500 shrink-0">
-                      {counts.get(section.name) ?? 0} questions
-                      {section.durationSeconds ? ` · ${Math.round(section.durationSeconds / 60)} min` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+          <div className="p-6 sm:p-8 space-y-8">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-exam-tint border border-exam-line p-4 rounded-xl">
+                <p className="text-sm text-gray-600 mb-1">Questions</p>
+                <p className="text-2xl font-semibold text-gray-900 tabular-nums">{paper.totalQuestions}</p>
+              </div>
+              <div className="bg-exam-tint border border-exam-line p-4 rounded-xl">
+                <p className="text-sm text-gray-600 mb-1">Time</p>
+                <p className="text-2xl font-semibold text-gray-900 tabular-nums">{mockMinutes} min</p>
+              </div>
             </div>
-          )}
 
-          <div className="border-t border-gray-100 pt-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">Choose Mode</h3>
-            
-            <form action={startExamAction} className="grid sm:grid-cols-2 gap-4">
-              <input type="hidden" name="paperId" value={paper.id} />
-              
-              <button
-                type="submit"
-                name="mode"
-                value="PRACTICE"
-                className="w-full bg-white text-gray-900 border-2 border-gray-900 hover:bg-gray-50 p-6 rounded-xl font-bold text-left transition-all hover:shadow-sm"
-              >
-                <div className="text-lg font-black text-gray-950 mb-1">PRACTICE MODE</div>
-                <div className="text-xs font-medium text-gray-600">
-                  Select answer &rarr; Click Confirm &rarr; View on-the-spot solution &rarr; Click Next.
-                </div>
-              </button>
-              
-              <Link
-                href={`/papers/${paper.id}/instructions`}
-                className="w-full bg-gray-900 text-white hover:bg-gray-800 p-6 rounded-xl font-bold text-left transition-all hover:shadow-md"
-              >
-                <div className="text-lg font-black text-white mb-1">MOCK TEST MODE</div>
-                <div className="text-xs font-medium text-gray-300">
-                  {pattern.navigation === "linear"
-                    ? `Real ${pattern.label} exam conditions: timed sections, one question at a time, no going back. Answers and solutions after you submit.`
-                    : `Real ${pattern.label} exam conditions: timer, question palette, Mark for Review. Answers and solutions after you submit.`}
-                </div>
-              </Link>
-            </form>
+            {sections.length > 0 && (
+              <div>
+                <h2 className="font-semibold text-gray-900 mb-3">Sections</h2>
+                <ul className="divide-y divide-gray-200 border border-gray-200 rounded-xl text-sm">
+                  {sections.map((section) => (
+                    <li key={section.name} className="flex justify-between gap-4 px-4 py-3">
+                      <span className="text-gray-900">{section.name}</span>
+                      <span className="text-gray-600 shrink-0">
+                        {counts.get(section.name) ?? 0} questions
+                        {section.durationSeconds ? ` · ${Math.round(section.durationSeconds / 60)} min` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="border-t border-gray-200 pt-8">
+              <h2 className="font-heading text-2xl font-semibold text-gray-900 mb-4">How do you want to take it?</h2>
+
+              <form action={startExamAction} className="grid sm:grid-cols-2 gap-4">
+                <input type="hidden" name="paperId" value={paper.id} />
+
+                <button
+                  type="submit"
+                  name="mode"
+                  value="PRACTICE"
+                  className="w-full bg-white text-gray-900 border-2 border-gray-300 hover:border-exam-primary p-5 rounded-xl text-left transition-colors"
+                >
+                  <span className="block text-lg font-bold text-gray-900 mb-1">Practice</span>
+                  <span className="block text-sm text-gray-600 leading-relaxed">
+                    Pick an answer, confirm it, and see the solution straight away, one question at a time.
+                  </span>
+                </button>
+
+                <Link
+                  href={`/papers/${paper.id}/instructions`}
+                  className="w-full bg-exam-primary hover:bg-exam-primary-hover text-white p-5 rounded-xl text-left transition-colors"
+                >
+                  <span className="block text-lg font-bold mb-1">Mock test</span>
+                  <span className="block text-sm text-white/85 leading-relaxed">
+                    {pattern.navigation === "linear"
+                      ? `Real ${pattern.label} conditions: timed sections, one question at a time, no going back. Answers and solutions after you submit.`
+                      : `Real ${pattern.label} conditions: timer, question palette, Mark for Review. Answers and solutions after you submit.`}
+                  </span>
+                </Link>
+              </form>
+            </div>
           </div>
         </div>
       </main>
