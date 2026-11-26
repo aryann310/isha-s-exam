@@ -845,12 +845,14 @@ export async function adminResetAttemptAction(attemptId: string) {
 
   await prisma.$transaction(async (tx) => {
     await tx.attemptAnswer.deleteMany({ where: { attemptId } });
+    await tx.untimedAnswer.deleteMany({ where: { attemptId } });
     await tx.attempt.update({
       where: { id: attemptId },
       data: {
         ...state,
         status: "IN_PROGRESS",
         submittedAt: null,
+        untimedEndedAt: null,
         score: null,
         correct: null,
         incorrect: null,

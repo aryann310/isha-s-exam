@@ -13,9 +13,11 @@ const FILTER_LABELS: Record<FilterType, string> = { ALL: "All", CORRECT: "Correc
 interface SolutionClientProps {
   questions: Question[];
   answers: AttemptAnswer[];
+  /** Answers given after the test in the untimed phase (not scored). */
+  untimedAnswers?: Array<{ questionId: string; selectedAnswer: string }>;
 }
 
-export function SolutionClient({ questions, answers }: SolutionClientProps) {
+export function SolutionClient({ questions, answers, untimedAnswers = [] }: SolutionClientProps) {
   const [filter, setFilter] = useState<FilterType>("ALL");
 
   const getQuestionStatus = (questionId: string) => {
@@ -61,6 +63,8 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
             const selectedAnswer = ans?.selectedAnswer;
 
             const optionsObj = parseQuestionOptions(q.options);
+            const untimed = untimedAnswers.find((u) => u.questionId === q.id);
+            const untimedRight = untimed ? isAnswerCorrect(q.questionType, q.correctAnswer, untimed.selectedAnswer) : false;
 
             return (
               <div key={q.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -79,6 +83,12 @@ export function SolutionClient({ questions, answers }: SolutionClientProps) {
                 </div>
 
                 <div className="p-6">
+                  {untimed && (
+                    <p className="mb-6 text-sm rounded-lg border border-amber-200 bg-amber-50 text-gray-800 px-4 py-2">
+                      Answered after the test (untimed, not scored): <strong className="font-mono">{untimed.selectedAnswer}</strong>{" "}
+                      <strong className={untimedRight ? "text-st-answered" : "text-st-not-answered"}>{untimedRight ? "Correct" : "Wrong"}</strong>
+                    </p>
+                  )}
                   <div
                     className="prose max-w-none text-gray-900 text-[17px] mb-6 leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.questionText) }}

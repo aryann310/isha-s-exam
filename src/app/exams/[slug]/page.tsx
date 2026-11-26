@@ -4,8 +4,9 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { hasSectionMarks } from "@/lib/exam-patterns";
 import { themeForExam } from "@/lib/exam-theme";
+import { paperProgress } from "@/server/untimed";
 import { SiteHeader } from "@/components/site/site-header";
-import { FileText } from "lucide-react";
+import { Check, FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,14 @@ export default async function ExamPapersPage({
   if (!exam) return notFound();
   const theme = themeForExam(exam);
   const name = (session.username as string) || (session.name as string) || "Student";
+
+  // This student's progress per paper: DONE once a test (mock or practice) is finished, CONTINUE while a
+  // finished mock still has unanswered questions waiting in the untimed phase.
+  const myAttempts = await prisma.attempt.findMany({
+    where: { userId: session.userId as string, paperId: { in: exam.papers.map((p) => p.id) } },
+    select: { id: true, paperId: true, mode: true, status: true, unattempted: true, untimedEndedAt: true, submittedAt: true, startedAt: true },
+  });
+  const progress = new Map(exam.papers.map((p) => [p.id, paperProgress(myAttempts.filter((a) => a.paperId === p.id))]));
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -78,7 +87,9 @@ export default async function ExamPapersPage({
           </div>
         ) : (
           <div data-exam-theme={theme} className="space-y-3">
-            {exam.papers.map((paper) => (
+            {exam.papers.map((paper) => {
+              const state = progress.get(paper.id);
+              return (
               <div
                 key={paper.id}
                 className="bg-white border border-gray-200 rounded-2xl px-5 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-gray-300"
@@ -87,6 +98,16 @@ export default async function ExamPapersPage({
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-semibold text-gray-900">{paper.title}</h2>
                     {paper.shift && <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{paper.shift}</span>}
+                    {state?.kind === "done" && (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide bg-st-answered text-white px-2 py-0.5 rounded">
+                        <Check className="w-3 h-3" aria-hidden /> Done
+                      </span>
+                    )}
+                    {state?.kind === "continue" && (
+                      <span className="text-xs font-bold uppercase tracking-wide bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                        {state.left} unanswered · continue
+                      </span>
+                    )}
                     {!paper.isActive && (
                       <span className="text-xs font-semibold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">Hidden from students</span>
                     )}
@@ -101,14 +122,29 @@ export default async function ExamPapersPage({
                   </p>
                   {paper.description && <p className="text-sm text-gray-500 mt-1 line-clamp-1">{paper.description}</p>}
                 </div>
-                <Link
-                  href={`/papers/${paper.id}`}
-                  className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-5 h-10 text-sm font-semibold shrink-0"
-                >
-                  Open paper &rarr;
-                </Link>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  {state?.kind === "continue" && (
+                    <Link
+                      href={`/exam/${state.attemptId}/continue`}
+                      className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-5 h-10 text-sm font-semibold"
+                    >
+                      Continue unanswered &rarr;
+                    </Link>
+                  )}
+                  <Link
+                    href={`/papers/${paper.id}`}
+                    className={
+                      state?.kind === "continue"
+                        ? "inline-flex items-center justify-center border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded-lg px-5 h-10 text-sm font-semibold"
+                        : "inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-5 h-10 text-sm font-semibold"
+                    }
+                  >
+                    {state ? "Take again" : "Open paper"} &rarr;
+                  </Link>
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

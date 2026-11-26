@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { SolutionClient } from "@/components/exam/solution-client";
 import { loadAttemptContext } from "@/server/attempts";
+import { untimedPending } from "@/server/untimed";
 import { themeForPaper } from "@/lib/exam-theme";
 import { SiteHeader } from "@/components/site/site-header";
 import { ExamBadge } from "@/components/site/exam-badge";
@@ -38,10 +39,13 @@ export default async function SolutionsPage({
         },
       },
       answers: true,
+      untimedAnswers: { select: { questionId: true, selectedAnswer: true } },
     },
   });
 
   if (!attempt || (attempt.status === "IN_PROGRESS" && !isAdmin)) return notFound();
+  // Solutions stay closed while the untimed phase for the unanswered questions is still open.
+  if (untimedPending(attempt) && !isAdmin) redirect(`/results/${attempt.id}`);
 
   const name = (session.username as string) || (session.name as string) || "Student";
 
@@ -59,7 +63,7 @@ export default async function SolutionsPage({
           <span className="text-sm text-gray-600">Solutions</span>
         </div>
         <h1 className="font-heading text-3xl font-semibold text-gray-900 mb-6">{attempt.paper?.title || "Exam"}</h1>
-        <SolutionClient questions={attempt.paper.questions} answers={attempt.answers} />
+        <SolutionClient questions={attempt.paper.questions} answers={attempt.answers} untimedAnswers={attempt.untimedAnswers} />
       </main>
     </div>
   );

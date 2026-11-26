@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { isAnswerCorrect, isAnswered, marksFor, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
 import { loadAttemptContext } from "@/server/attempts";
+import { untimedPending, untimedSummary } from "@/server/untimed";
+import { skipUntimedFormAction } from "@/server/actions/untimed";
 import { themeForPaper } from "@/lib/exam-theme";
 import { SiteHeader } from "@/components/site/site-header";
 import { ExamBadge } from "@/components/site/exam-badge";
@@ -36,6 +38,7 @@ export default async function ResultPage({
         },
       },
       answers: true,
+      untimedAnswers: { select: { questionId: true, selectedAnswer: true } },
     },
   });
 
@@ -82,6 +85,11 @@ export default async function ResultPage({
   });
 
   const sectionsList = Object.entries(sectionStats).filter(([, stat]) => stat.total > 0);
+
+  // Untimed phase: questions left in the test can still be answered (score unchanged); solutions wait for it.
+  const pending = untimedPending(attempt);
+  const ownAttempt = attempt.userId === session.userId;
+  const extra = untimedSummary(attempt.paper, attempt.paper.questions, attempt.untimedAnswers);
 
   const theme = themeForPaper(attempt.paper, attempt.paper.exam?.name);
   const name = (session.username as string) || (session.name as string) || "Student";
@@ -146,6 +154,31 @@ export default async function ResultPage({
           </dl>
         </section>
 
+        {pending && ownAttempt && (
+          <section aria-labelledby="untimed-next" data-exam-theme={theme} className="bg-white border-2 border-exam-primary rounded-2xl p-6 sm:p-8">
+            <h2 id="untimed-next" className="font-heading text-2xl font-semibold text-gray-900">
+              {attempt.unattempted} question{attempt.unattempted === 1 ? "" : "s"} left unanswered
+            </h2>
+            <p className="text-gray-600 mt-1 mb-5">
+              Continue them now with no time limit. Your score above stays as it is. Solutions open when you finish.
+            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <Link
+                href={`/exam/${attempt.id}/continue`}
+                className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white font-semibold px-6 h-11 rounded-lg"
+              >
+                Continue unanswered questions &rarr;
+              </Link>
+              <form action={skipUntimedFormAction}>
+                <input type="hidden" name="attemptId" value={attempt.id} />
+                <button type="submit" className="w-full sm:w-auto text-sm font-semibold text-gray-700 underline underline-offset-2 px-2 h-11">
+                  Skip and show solutions
+                </button>
+              </form>
+            </div>
+          </section>
+        )}
+
         {/* Section performance */}
         {sectionsList.length > 0 && (
           <section aria-labelledby="by-section" className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">
@@ -187,13 +220,54 @@ export default async function ResultPage({
           </section>
         )}
 
+        {/* Untimed phase results: shown apart, never part of the score above */}
+        {extra.answered > 0 && (
+          <section aria-labelledby="untimed-result" className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">
+            <h2 id="untimed-result" className="font-heading text-2xl font-semibold text-gray-900">
+              Untimed phase{pending ? " (in progress)" : ""}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1 mb-5">Questions you answered after the test, with no time limit. Not included in your score.</p>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <dt className="text-sm text-gray-600">Answered</dt>
+                <dd className="text-xl font-semibold text-gray-900 tabular-nums">
+                  {extra.answered} <span className="text-gray-500 text-base">/ {attempt.unattempted ?? extra.answered}</span>
+                </dd>
+              </div>
+              {pending ? (
+                <div className="col-span-1 sm:col-span-3 text-sm text-gray-600 self-center">Correct answers and marks show when you finish.</div>
+              ) : (
+                <>
+                  <div>
+                    <dt className="text-sm text-gray-600">Correct</dt>
+                    <dd className="text-xl font-semibold text-st-answered tabular-nums">{extra.correct}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-600">Wrong</dt>
+                    <dd className="text-xl font-semibold text-st-not-answered tabular-nums">{extra.incorrect}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-600">Would have added</dt>
+                    <dd className="text-xl font-semibold text-gray-900 tabular-nums">
+                      {extra.marks > 0 ? "+" : ""}
+                      {extra.marks} marks
+                    </dd>
+                  </div>
+                </>
+              )}
+            </dl>
+          </section>
+        )}
+
         <div data-exam-theme={theme} className="flex flex-col sm:flex-row gap-3">
-          <Link
-            href={`/solutions/${attempt.id}`}
-            className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white font-semibold px-6 h-11 rounded-lg"
-          >
-            See all solutions &rarr;
-          </Link>
+          {(!pending || isAdmin) && (
+            <Link
+              href={`/solutions/${attempt.id}`}
+              className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white font-semibold px-6 h-11 rounded-lg"
+            >
+              See all solutions &rarr;
+            </Link>
+          )}
           <Link
             href={`/papers/${attempt.paperId}`}
             className="inline-flex items-center justify-center bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 font-semibold px-6 h-11 rounded-lg"
