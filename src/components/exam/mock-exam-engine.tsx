@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveResponseAction, submitExamAction, submitSectionAction, visitQuestionAction } from "@/server/actions/engine";
+import { keepAliveAction, saveResponseAction, submitExamAction, submitSectionAction, visitQuestionAction } from "@/server/actions/engine";
+import { useSaveQueue, type SaveJob } from "@/components/exam/use-save-queue";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { ExamCalculator } from "@/components/exam/exam-calculator";
 import { PALETTE_LABELS, PALETTE_ORDER, PaletteSymbol, paletteStatus, type PaletteStatus } from "@/components/exam/palette-symbol";
@@ -121,12 +122,59 @@ export function MockExamEngine(props: Props) {
     router.replace(`/results/${attemptId}`);
   }, [attemptId, router]);
 
+  // Answers are saved in the background, in order, so moving to the next question never waits for the network.
+  const send = useCallback(
+    async (job: SaveJob) => {
+      if (job.kind === "save") {
+        return saveResponseAction(attemptId, job.questionId, { answer: job.answer, markedForReview: job.markedForReview }, job.visitNext);
+      }
+      if (job.kind === "visit") {
+        await visitQuestionAction(attemptId, job.questionId);
+        return { ok: true as const };
+      }
+      const r = await keepAliveAction(attemptId);
+      return r.status && r.status !== "IN_PROGRESS" ? { ok: false as const, error: "This test has ended.", finished: true } : { ok: true as const };
+    },
+    [attemptId]
+  );
+  const onRefused = useCallback(
+    (job: SaveJob, message: string) => {
+      if (job.kind !== "save") return;
+      setError(`Your answer to ${job.label} was not saved: ${message}`);
+      if (message.includes("closed")) router.refresh();
+    },
+    [router]
+  );
+  // Answers that were still unsent when the page was last closed or reloaded: show them as given.
+  const onRestore = useCallback((jobs: SaveJob[]) => {
+    setResponses((prev) => {
+      const next = { ...prev };
+      for (const job of jobs) {
+        if (job.kind === "save") next[job.questionId] = { visited: true, answer: job.answer, markedForReview: job.markedForReview };
+      }
+      return next;
+    });
+  }, []);
+  const { enqueue, flush, pending, retrying, lastActivity } = useSaveQueue({
+    send,
+    onFinished: finish,
+    onRefused,
+    storageKey: `exam-unsent:${attemptId}`,
+    onRestore,
+  });
+
   const timeUp = useCallback(async () => {
     setEnding(true);
+    // Send answers still in the queue first (the server accepts saves a few seconds past the deadline).
+    await flush(8000);
+    // The next section is on its way once the server has moved on: give the page refresh time to arrive (it can
+    // take several seconds on a slow connection; starting another one would cancel it). Otherwise retry soon.
+    let retryMs = 4000;
     try {
       if (sectional) {
         const res = await submitSectionAction(attemptId, props.currentSectionIndex);
         if (res.ok && res.finished) return finish();
+        if (res.ok) retryMs = 15000;
         router.refresh();
       } else {
         const res = await submitExamAction(attemptId);
@@ -136,12 +184,12 @@ export function MockExamEngine(props: Props) {
     } catch {
       router.refresh();
     }
-    // If the server has not caught up yet (clock skew), allow another try shortly.
+    // If the server has not caught up yet (clock skew), allow another try.
     setTimeout(() => {
       timeUpStarted.current = false;
       setEnding(false);
-    }, 4000);
-  }, [attemptId, finish, props.currentSectionIndex, router, sectional]);
+    }, retryMs);
+  }, [attemptId, finish, flush, props.currentSectionIndex, router, sectional]);
 
   useEffect(() => {
     if (!props.deadline) return;
@@ -158,14 +206,24 @@ export function MockExamEngine(props: Props) {
     return () => clearInterval(t);
   }, [props.deadline, clockState.skew, timeUp]);
 
-  // Tell the server about every question opened, so the palette survives a reload.
+  // Tell the server about every question opened, so the palette survives a reload. After Save & Next the
+  // save itself carries this (see persist); here it covers the first question and palette jumps.
   const reported = useRef(new Set(Object.keys(props.initialResponses).filter((id) => props.initialResponses[id]?.visited)));
   const qid = q?.id;
   useEffect(() => {
     if (!qid || reported.current.has(qid)) return;
     reported.current.add(qid);
-    void visitQuestionAction(attemptId, qid).catch(() => undefined);
-  }, [attemptId, qid]);
+    enqueue({ kind: "visit", key: `visit:${qid}`, label: "", questionId: qid });
+  }, [enqueue, qid]);
+
+  // Keep the database and server warm during long pauses (reading a passage): the free database sleeps after
+  // a few idle minutes and waking it would delay the next click. Saves already count as activity.
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (pending === 0 && Date.now() - lastActivity.current > 150_000) enqueue({ kind: "ping", key: "ping", label: "" });
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [enqueue, lastActivity, pending]);
 
   const goTo = (index: number, force = false) => {
     const target = questions[index];
@@ -181,29 +239,33 @@ export function MockExamEngine(props: Props) {
     }
   };
 
-  const persist = async (next: Response, advance: boolean) => {
-    if (!q || busy) return;
-    setBusy(true);
-    setError(null);
-    const before = responses[q.id];
+  /**
+   * Records the response and moves on at once; the save runs in the background queue (in order, retried if the
+   * connection drops). The palette shows the answer straight away. The server still checks every save.
+   */
+  const persist = (next: Response, advance: boolean) => {
+    if (!q || busy || ending) return;
+    if (linear && !hasAnswer(next)) return;
     setResponses((prev) => ({ ...prev, [q.id]: next }));
-    try {
-      const res = await saveResponseAction(attemptId, q.id, { answer: next.answer, markedForReview: next.markedForReview });
-      if (!res.ok) {
-        setResponses((prev) => ({ ...prev, [q.id]: before ?? { visited: true, answer: null, markedForReview: false } }));
-        if (res.finished) return finish();
-        setError(res.error);
-        if (res.error.includes("closed")) router.refresh();
-        return;
+    let visitNext: string | null = null;
+    // On the last question there is nowhere to go: stay and keep showing the answer.
+    if (advance && current < questions.length - 1) {
+      const target = questions[current + 1];
+      if (!reported.current.has(target.id)) {
+        reported.current.add(target.id);
+        visitNext = target.id;
       }
-      // On the last question there is nowhere to go: stay and keep showing the saved answer.
-      if (advance && current < questions.length - 1) goTo(current + 1, true);
-    } catch {
-      setResponses((prev) => ({ ...prev, [q.id]: before ?? { visited: true, answer: null, markedForReview: false } }));
-      setError("Could not save. Check your connection and try again.");
-    } finally {
-      setBusy(false);
+      goTo(current + 1, true);
     }
+    enqueue({
+      kind: "save",
+      key: `save:${q.id}`,
+      label: `Question ${q.number}`,
+      questionId: q.id,
+      answer: next.answer,
+      markedForReview: next.markedForReview,
+      visitNext,
+    });
   };
 
   const saveAndNext = () => persist({ visited: true, answer: draft, markedForReview: false }, true);
@@ -217,6 +279,13 @@ export function MockExamEngine(props: Props) {
   const submit = async () => {
     setBusy(true);
     setError(null);
+    // Every answer must reach the server before the section or test is closed.
+    if (!(await flush(20_000))) {
+      setError("Some answers are still being saved. Check your internet connection, then submit again.");
+      setModal(null);
+      setBusy(false);
+      return;
+    }
     try {
       const res = sectional ? await submitSectionAction(attemptId, props.currentSectionIndex) : await submitExamAction(attemptId);
       if (!res.ok) {
@@ -322,18 +391,32 @@ export function MockExamEngine(props: Props) {
             );
           })}
         </div>
-        {remaining !== null && (
-          <div className={`flex items-center gap-2 px-3 text-sm font-bold whitespace-nowrap ${remaining <= 300 ? "text-red-600" : "text-gray-900"}`}>
-            <span className="text-xs font-semibold text-gray-600">{sectional ? "Section Time Left" : "Time Left"}:</span>
-            <span className="font-mono text-base">{clock(remaining)}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <span
+            role="status"
+            aria-live="polite"
+            className={`hidden sm:inline text-[11px] font-semibold whitespace-nowrap ${retrying ? "text-amber-700" : "text-gray-500"}`}
+          >
+            {retrying ? "Connection problem, retrying to save…" : pending > 0 ? "Saving…" : "All answers saved"}
+          </span>
+          {remaining !== null && (
+            <div className={`flex items-center gap-2 px-3 text-sm font-bold whitespace-nowrap ${remaining <= 300 ? "text-red-600" : "text-gray-900"}`}>
+              <span className="text-xs font-semibold text-gray-600">{sectional ? "Section Time Left" : "Time Left"}:</span>
+              <span className="font-mono text-base">{clock(remaining)}</span>
+            </div>
+          )}
+        </div>
       </div>
+      {retrying && (
+        <div className="sm:hidden flex-none bg-amber-50 border-b border-amber-200 text-amber-800 text-xs px-4 py-1.5">
+          Connection problem: your answers are kept and will be saved when you are back online.
+        </div>
+      )}
 
       {error && (
-        <div className="flex-none bg-red-50 border-b border-red-200 text-red-800 text-sm px-4 py-2 flex justify-between">
+        <div role="alert" className="flex-none bg-red-50 border-b border-red-200 text-red-800 text-sm px-4 py-2 flex justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-bold">✕</button>
+          <button onClick={() => setError(null)} aria-label="Dismiss" className="font-bold">✕</button>
         </div>
       )}
 
@@ -422,7 +505,7 @@ export function MockExamEngine(props: Props) {
                   disabled={busy || !draft}
                   className="px-6 py-2 text-sm font-bold rounded bg-[#2a7ab8] text-white hover:bg-[#21689e] disabled:opacity-50"
                 >
-                  {busy ? "Saving…" : "Next"}
+                  Next
                 </button>
                 <button onClick={() => setPaletteOpen(true)} className="md:hidden px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white">
                   Progress
