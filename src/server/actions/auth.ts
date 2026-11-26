@@ -1,7 +1,8 @@
 "use server";
 
 import { compare } from "bcryptjs";
-import { createSession } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { createSession, deleteSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
 const GENERIC = "Invalid username or password";
@@ -37,4 +38,9 @@ export async function loginAction(formData: FormData) {
     console.error("Login error:", error);
     return { error: "Sign-in failed because of a server problem. Please try again." };
   }
+}
+
+export async function logoutAction() {
+  await deleteSession();
+  redirect("/login");
 }

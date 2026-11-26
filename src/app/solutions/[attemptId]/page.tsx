@@ -1,9 +1,11 @@
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { SolutionClient } from "@/components/exam/solution-client";
 import { loadAttemptContext } from "@/server/attempts";
+import { themeForPaper } from "@/lib/exam-theme";
+import { SiteHeader } from "@/components/site/site-header";
+import { ExamBadge } from "@/components/site/exam-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -41,18 +43,22 @@ export default async function SolutionsPage({
 
   if (!attempt || (attempt.status === "IN_PROGRESS" && !isAdmin)) return notFound();
 
+  const name = (session.username as string) || (session.name as string) || "Student";
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <Link href={isAdmin ? "/admin/live" : `/results/${attempt.id}`} className="text-sm font-medium text-gray-500 hover:text-black">
-            &larr; {isAdmin ? "Back to Live Proctor" : "Back to Results"}
-          </Link>
-          <h1 className="text-xl font-bold tracking-tight">{attempt.paper?.title || "Exam"} — COMPLETE SOLUTIONS</h1>
+      <SiteHeader
+        name={name}
+        isAdmin={isAdmin}
+        back={isAdmin ? { href: "/admin/live", label: "Live proctor" } : { href: `/results/${attempt.id}`, label: "Your result" }}
+      />
+
+      <main data-exam-theme={themeForPaper(attempt.paper, attempt.paper.exam?.name)} className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-10">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <ExamBadge theme={themeForPaper(attempt.paper, attempt.paper.exam?.name)}>{attempt.paper.exam?.name || "Exam"}</ExamBadge>
+          <span className="text-sm text-gray-600">Solutions</span>
         </div>
-      </header>
-      
-      <main className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8">
+        <h1 className="font-heading text-3xl font-semibold text-gray-900 mb-6">{attempt.paper?.title || "Exam"}</h1>
         <SolutionClient questions={attempt.paper.questions} answers={attempt.answers} />
       </main>
     </div>
