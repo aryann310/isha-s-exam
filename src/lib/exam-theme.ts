@@ -1,9 +1,9 @@
 // Each exam has its own look on its test screens (colours + font, defined in globals.css under
 // [data-exam-theme]). Everything else in the portal uses the neutral main theme.
 
-export type ExamTheme = "main" | "cat" | "nmat" | "snap" | "cmat";
+export type ExamTheme = "main" | "cat" | "nmat" | "snap" | "cmat" | "surprise";
 
-const BY_PATTERN: Record<string, ExamTheme> = { CAT: "cat", NMAT: "nmat", SNAP: "snap", CMAT: "cmat" };
+const BY_PATTERN: Record<string, ExamTheme> = { CAT: "cat", NMAT: "nmat", SNAP: "snap", CMAT: "cmat", SURPRISE: "surprise" };
 
 /** Theme for a paper, from its exam pattern; CUSTOM papers fall back to the exam's name. */
 export function themeForPaper(paper: { examPattern?: string | null }, examName?: string | null): ExamTheme {

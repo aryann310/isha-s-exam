@@ -14,6 +14,7 @@ import {
   type PaperSection,
 } from "@/lib/exam-patterns";
 import type { Attempt, Paper } from "@prisma/client";
+import { isSurprisePaper } from "@/lib/surprise";
 
 export interface AttemptContext {
   attempt: Attempt;
@@ -220,6 +221,8 @@ export async function finalizeAttempt(attemptId: string, status: "SUBMITTED" | "
         unattempted: totals.unattempted,
         accuracy: totals.accuracy,
         timeTaken,
+        // Surprise tests skip the untimed phase: the result and every solution open as soon as the test ends.
+        ...(isSurprisePaper(attempt.paper) ? { untimedEndedAt: submittedAt } : {}),
       },
     });
     await syncVerdicts(tx, attemptId, attempt.answers, totals.verdicts);

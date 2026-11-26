@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { createAttempt } from "@/server/attempts";
+import { isSurprisePaper } from "@/lib/surprise";
 
 export async function startExamAction(formData: FormData) {
   const session = await getSession();
@@ -23,6 +24,10 @@ export async function startExamAction(formData: FormData) {
   });
   if (!paper) {
     throw new Error("Paper not found");
+  }
+  // Surprise tests are always taken as a timed mock.
+  if (mode === "PRACTICE" && isSurprisePaper(paper)) {
+    redirect(`/papers/${paper.id}/instructions`);
   }
 
   // A paper without questions would leave the student on an empty screen until the timer ran out.

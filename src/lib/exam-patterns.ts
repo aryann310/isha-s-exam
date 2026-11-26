@@ -1,7 +1,7 @@
 // Exam pattern presets. Each paper picks one; the mock engine, timers and scoring follow it.
 // Patterns describe the publicly documented exam rules (sections, timing, navigation, marking).
 
-export type ExamPatternId = "CAT" | "CMAT" | "NMAT" | "SNAP" | "CUSTOM";
+export type ExamPatternId = "CAT" | "CMAT" | "NMAT" | "SNAP" | "SURPRISE" | "CUSTOM";
 export type QuestionType = "MCQ" | "TITA";
 
 export interface PatternSection {
@@ -157,6 +157,34 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
       "There is one timer for the whole test and no time limit per section. You may attempt the sections in any order: use the section tabs at the top to move between them at any time.",
       "Each question has four options; choose the most appropriate one. A wrong answer costs 25% of that question's marks (−0.25 on a 1-mark question). Unanswered questions score 0.",
       "Calculators are not allowed.",
+    ],
+  },
+  SURPRISE: {
+    id: "SURPRISE",
+    label: "Surprise Test",
+    summary:
+      "30 mixed questions from every subject (Quant, Verbal, Reasoning, DI, General Awareness) in CAT, CMAT, SNAP and NMAT style, all difficulties. One 60-minute timer, move freely. +3 / −1. Result and full solutions as soon as you submit.",
+    timing: "overall",
+    sectionOrder: "fixed",
+    canSubmitSectionEarly: true,
+    canSubmitEarly: true,
+    navigation: "free",
+    calculator: false,
+    totalMinutes: 60,
+    marks: { correct: 3, incorrect: -1, unattempted: 0, titaCorrect: 3, titaIncorrect: 0 },
+    sections: [
+      { name: "Quantitative Aptitude", aliases: ["quant", "quantitative"], minutes: 0 },
+      { name: "Verbal Ability", aliases: ["verbal", "english", "language", "reading"], minutes: 0 },
+      { name: "Logical Reasoning", aliases: ["logical", "reasoning"], minutes: 0 },
+      { name: "Data Interpretation", aliases: ["data interpretation", "di"], minutes: 0 },
+      { name: "General Awareness", aliases: ["general awareness", "awareness", "gk"], minutes: 0 },
+    ],
+    instructions: [
+      "This surprise test has 30 questions mixed from every subject and every difficulty, written in the style of CAT, CMAT, SNAP and NMAT.",
+      "There is one timer of 60 minutes for the whole test and no time limit per section. Use the section tabs at the top to move between sections at any time.",
+      "Each correct answer earns 3 marks. Each wrong answer loses 1 mark. Unanswered questions score 0.",
+      "Calculators are not allowed; use rough paper.",
+      "When you submit (or the time runs out) you see your result straight away, with the answer and a worked solution for every question.",
     ],
   },
   CUSTOM: {

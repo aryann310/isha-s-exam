@@ -6,6 +6,7 @@ import { startExamAction } from "@/server/actions/exam";
 import { getPattern, resolvePaperSections } from "@/lib/exam-patterns";
 import { themeForPaper } from "@/lib/exam-theme";
 import { SiteHeader } from "@/components/site/site-header";
+import { isSurprisePaper } from "@/lib/surprise";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +71,11 @@ export default async function PaperInfoPage({
       : Math.round(paper.durationSeconds / 60);
 
   const name = (session.username as string) || (session.name as string) || "Student";
+  const surprise = isSurprisePaper(paper);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <SiteHeader name={name} isAdmin={isAdmin} back={{ href: `/exams/${paper.exam.slug}`, label: `${paper.exam.name} papers` }} />
+      <SiteHeader name={name} isAdmin={isAdmin} back={surprise ? { href: "/surprise", label: "Surprise Test" } : { href: `/exams/${paper.exam.slug}`, label: `${paper.exam.name} papers` }} />
 
       <main data-exam-theme={themeForPaper(paper, paper.exam.name)} className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10">
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -115,10 +117,10 @@ export default async function PaperInfoPage({
             <div className="border-t border-gray-200 pt-8">
               <h2 className="font-heading text-2xl font-semibold text-gray-900 mb-4">How do you want to take it?</h2>
 
-              <form action={startExamAction} className="grid sm:grid-cols-2 gap-4">
+              <form action={startExamAction} className={surprise ? "grid gap-4" : "grid sm:grid-cols-2 gap-4"}>
                 <input type="hidden" name="paperId" value={paper.id} />
 
-                <button
+                {!surprise && <button
                   type="submit"
                   name="mode"
                   value="PRACTICE"
@@ -128,15 +130,17 @@ export default async function PaperInfoPage({
                   <span className="block text-sm text-gray-600 leading-relaxed">
                     Pick an answer, confirm it, and see the solution straight away, one question at a time.
                   </span>
-                </button>
+                </button>}
 
                 <Link
                   href={`/papers/${paper.id}/instructions`}
                   className="w-full bg-exam-primary hover:bg-exam-primary-hover text-white p-5 rounded-xl text-left transition-colors"
                 >
-                  <span className="block text-lg font-bold mb-1">Mock test</span>
+                  <span className="block text-lg font-bold mb-1">{surprise ? "Start the surprise test" : "Mock test"}</span>
                   <span className="block text-sm text-white/85 leading-relaxed">
-                    {pattern.navigation === "linear"
+                    {surprise
+                      ? "One 60-minute timer, question palette, Mark for Review. Your result and every solution appear as soon as you submit."
+                      : pattern.navigation === "linear"
                       ? `Real ${pattern.label} conditions: timed sections, one question at a time, no going back. Answers and solutions after you submit.`
                       : `Real ${pattern.label} conditions: timer, question palette, Mark for Review. Answers and solutions after you submit.`}
                   </span>
