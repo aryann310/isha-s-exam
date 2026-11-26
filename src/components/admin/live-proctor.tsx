@@ -10,6 +10,7 @@ import { formatAgo, formatClock, formatDuration, formatMarks, formatPercent, for
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 import { Badge, Card, EmptyState, ModeBadge, ProgressBar, StatCard, StatusBadge, btnCls, tableCls } from "@/components/admin/ui";
+import { CircleCheck as CircleCheckIcon, Hourglass, Moon, Radio as RadioIcon } from "lucide-react";
 
 const POLL_MS = 5000;
 /** No answer or navigation for this long counts as idle. */
@@ -141,7 +142,7 @@ export function LiveProctor({ initial, students, papers }: { initial: LiveSnapsh
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Live proctor</h1>
+          <h1 className="font-heading text-3xl font-semibold text-slate-900">Live proctor</h1>
           <p className="mt-1 text-sm text-slate-500">Watch tests as they happen, add time, inspect answers or end a test.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -166,11 +167,11 @@ export function LiveProctor({ initial, students, papers }: { initial: LiveSnapsh
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Live now" value={snap.live.length} hint={`${liveMock} mock · ${snap.live.length - liveMock} practice`} tone={snap.live.length ? "live" : "default"} />
-        <StatCard label="Idle over 3 min" value={idleCount} hint="No answer or navigation" />
-        <StatCard label="Finished in last 24 h" value={snap.recent.length} hint={snap.recent.length === 20 ? "Showing latest 20" : undefined} />
-        <StatCard label="Inactive practice" value={snap.idlePractice.length} hint={`Nothing for ${30}+ min`} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard icon={RadioIcon} accent="crimson" label="Live now" value={snap.live.length} hint={`${liveMock} mock · ${snap.live.length - liveMock} practice`} tone={snap.live.length ? "live" : "default"} />
+        <StatCard icon={Hourglass} accent="saffron" label="Idle over 3 min" value={idleCount} hint="No answer or navigation" />
+        <StatCard icon={CircleCheckIcon} accent="green" label="Finished in last 24 h" value={snap.recent.length} hint={snap.recent.length === 20 ? "Showing latest 20" : undefined} />
+        <StatCard icon={Moon} accent="blue" label="Inactive practice" value={snap.idlePractice.length} hint={`Nothing for ${30}+ min`} />
       </div>
 
       {snap.autoClosed > 0 && (

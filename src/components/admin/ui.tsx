@@ -1,13 +1,15 @@
 // Small presentational building blocks shared by the admin pages. Server-safe (no client hooks).
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 
-export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
+export function PageHeader({ title, description, actions, eyebrow }: { title: string; description?: string; actions?: ReactNode; eyebrow?: string }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-6">
+    <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="font-heading text-2xl font-semibold text-slate-900">{title}</h1>
-        {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+        {eyebrow && <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">{eyebrow}</p>}
+        <h1 className="font-heading text-3xl font-semibold text-slate-900">{title}</h1>
+        {description && <p className="mt-1.5 max-w-2xl text-sm text-slate-600">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -23,11 +25,11 @@ export function Card({ title, description, action, children, className = "", bod
   bodyClassName?: string;
 }) {
   return (
-    <section className={`rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(28,31,35,0.04)] ${className}`}>
+    <section className={`overflow-hidden rounded-2xl border border-slate-200 bg-white ${className}`}>
       {(title || action) && (
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
+        <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
           <div>
-            {title && <h2 className="text-sm font-semibold text-slate-900">{title}</h2>}
+            {title && <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>}
             {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
           </div>
           {action}
@@ -38,23 +40,43 @@ export function Card({ title, description, action, children, className = "", bod
   );
 }
 
-export function StatCard({ label, value, hint, href, tone = "default" }: {
+/** Accent colours for stat tiles, borrowed from the exam themes so the admin panel matches the portal. */
+const ACCENTS = {
+  ink: "bg-slate-900 text-white",
+  blue: "bg-[#eef4fb] text-[#1f5fa8]",
+  green: "bg-[#e9f5f0] text-[#0f7a5f]",
+  crimson: "bg-[#fbeef2] text-[#a3214f]",
+  saffron: "bg-[#fdf1e7] text-[#b5490b]",
+  live: "bg-rose-50 text-rose-600",
+} as const;
+export type Accent = keyof typeof ACCENTS;
+
+export function StatCard({ label, value, hint, href, tone = "default", icon: Icon, accent = "ink" }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   href?: string;
   tone?: "default" | "live";
+  icon?: LucideIcon;
+  accent?: Accent;
 }) {
   const body = (
     <>
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className={`mt-1.5 text-2xl font-semibold tabular-nums tracking-tight ${tone === "live" ? "text-rose-600" : "text-slate-900"}`}>{value}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium text-slate-600">{label}</p>
+        {Icon && (
+          <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${ACCENTS[tone === "live" ? "live" : accent]}`}>
+            <Icon className="size-[18px]" strokeWidth={2} aria-hidden />
+          </span>
+        )}
+      </div>
+      <p className={`mt-2 text-3xl font-bold tabular-nums tracking-tight ${tone === "live" ? "text-rose-600" : "text-slate-900"}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </>
   );
-  const cls = "block rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(28,31,35,0.04)]";
+  const cls = "block rounded-2xl border border-slate-200 bg-white p-5";
   return href ? (
-    <Link href={href} className={`${cls} transition-colors hover:border-slate-300`}>
+    <Link href={href} className={`${cls} transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md`}>
       {body}
     </Link>
   ) : (
@@ -100,11 +122,12 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   );
 }
 
-export function ProgressBar({ value, tone = "slate" }: { value: number; tone?: "slate" | "green" | "red" | "amber" }) {
-  const color = { slate: "bg-slate-800", green: "bg-emerald-500", red: "bg-rose-500", amber: "bg-amber-500" }[tone];
+export function ProgressBar({ value, tone = "slate" }: { value: number; tone?: "slate" | "green" | "red" | "amber" | "exam" }) {
+  // "exam": the colour of the nearest data-exam-theme wrapper.
+  const color = { slate: "bg-slate-800", green: "bg-emerald-500", red: "bg-rose-500", amber: "bg-amber-500", exam: "bg-exam-primary" }[tone];
   const pct = Math.max(0, Math.min(100, value));
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
       <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -132,8 +155,8 @@ export function BarChart({ data, height = 160, valueLabel = "" }: {
           return (
             <g key={i}>
               <title>{`${d.label}: ${d.value}${valueLabel}${d.secondary !== undefined ? ` (${d.secondary} completed)` : ""}`}</title>
-              <rect x={x} y={height - h} width={w} height={Math.max(h, d.value > 0 ? 1 : 0)} rx="0.6" fill="#d0d0ca" />
-              {d.secondary !== undefined && <rect x={x} y={height - h2} width={w} height={Math.max(h2, d.secondary > 0 ? 1 : 0)} rx="0.6" fill="#1c1f23" />}
+              <rect x={x} y={height - h} width={w} height={Math.max(h, d.value > 0 ? 1 : 0)} rx="0.8" fill={d.secondary !== undefined ? "#c9d6e3" : "#1f5fa8"} />
+              {d.secondary !== undefined && <rect x={x} y={height - h2} width={w} height={Math.max(h2, d.secondary > 0 ? 1 : 0)} rx="0.6" fill="#1f5fa8" />}
             </g>
           );
         })}
@@ -149,7 +172,7 @@ export function BarChart({ data, height = 160, valueLabel = "" }: {
 
 export const tableCls = {
   table: "w-full text-left text-sm",
-  thead: "border-b border-slate-200 bg-slate-50/60 text-xs font-medium text-slate-500",
+  thead: "border-y border-slate-200 bg-slate-50 text-xs font-medium text-slate-600",
   th: "px-4 py-2.5 font-medium whitespace-nowrap",
   tbody: "divide-y divide-slate-100",
   tr: "hover:bg-slate-50/70",
@@ -157,8 +180,8 @@ export const tableCls = {
 };
 
 export const btnCls = {
-  primary: "inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50",
-  secondary: "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50",
+  primary: "inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50",
+  secondary: "inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50",
   danger: "inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50",
   ghost: "inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-50",
 };

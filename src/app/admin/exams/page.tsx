@@ -32,7 +32,7 @@ export default async function AdminExamsPage() {
       <div className="w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Exam Categories & Management</h2>
+            <h1 className="font-heading text-3xl font-semibold text-slate-900">Exams</h1>
             <p className="text-sm text-slate-500 mt-1">
               Create, configure, and manage examinations like CMAT, SNAP, CAT, XAT, and publish question papers.
             </p>
