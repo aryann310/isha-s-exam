@@ -19,7 +19,7 @@ export default async function AdminImportPage() {
 
       <div className="max-w-5xl w-full">
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Bulk Question Ingestion</h2>
+          <h1 className="font-heading text-3xl font-semibold text-slate-900">Bulk import</h1>
           <p className="text-sm text-slate-500 mt-1">
             Import existing PYQs in bulk directly into the database using JSON or CSV format.
           </p>

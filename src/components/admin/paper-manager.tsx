@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PatternSettings } from "@/components/admin/pattern-settings";
 import { getPattern, resolvePaperSections, sectionKey } from "@/lib/exam-patterns";
+import { ExamBadge } from "@/components/site/exam-badge";
+import { themeForPaper } from "@/lib/exam-theme";
 import {
   createPaperAction,
   updatePaperAction,
@@ -407,9 +409,7 @@ export function PaperManager({
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="bg-slate-900 text-white text-[10px] font-semibold px-2 py-0.5 rounded">
-                      {paper.exam.name}
-                    </span>
+                    <ExamBadge theme={themeForPaper(paper, paper.exam.name)}>{paper.exam.name}</ExamBadge>
                     <h4 className="text-base font-bold text-slate-900">{paper.title}</h4>
                     <span
                       className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
@@ -418,10 +418,10 @@ export function PaperManager({
                           : "bg-amber-100 text-amber-800"
                       }`}
                     >
-                      {paper.isActive ? "PUBLISHED" : "DRAFT / UNPUBLISHED"}
+                      {paper.isActive ? "Published" : "Hidden"}
                     </span>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                      {getPattern(paper.examPattern).label} PATTERN
+                      {getPattern(paper.examPattern).label} rules
                     </span>
                   </div>
                   <p className="text-xs text-slate-500">

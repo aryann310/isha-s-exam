@@ -33,7 +33,7 @@ export default async function AdminPapersPage({
       <div className="w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Paper Management</h2>
+            <h1 className="font-heading text-3xl font-semibold text-slate-900">Papers</h1>
             <p className="text-sm text-slate-500 mt-1">
               Create, configure, and publish question papers across all examinations.
             </p>
