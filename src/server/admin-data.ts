@@ -8,6 +8,7 @@ import { computeTiming } from "@/lib/attempt-timing";
 import { getPattern, isAnswerCorrect, isAnswered, marksFor, resolvePaperSections, sectionKey, type PaperMarks } from "@/lib/exam-patterns";
 import { finalizeAttempt } from "@/server/attempts";
 import { ADMIN_TIME_ZONE, dayKey, formatShortDay } from "@/lib/admin-format";
+import { themeForPaper, type ExamTheme } from "@/lib/exam-theme";
 
 export const COMPLETED = ["SUBMITTED", "AUTO_SUBMITTED"];
 /** A practice session counts as live only while the student has done something recently. */
@@ -130,11 +131,11 @@ export async function getOverview() {
       select: {
         id: true, mode: true, status: true, score: true, accuracy: true, startedAt: true, paperId: true,
         user: { select: { name: true, email: true } },
-        paper: { select: { title: true } },
+        paper: { select: { title: true, examPattern: true, exam: { select: { name: true } } } },
       },
     }),
     paperTotals(),
-    prisma.paper.findMany({ select: { id: true, title: true } }),
+    prisma.paper.findMany({ select: { id: true, title: true, isActive: true, examPattern: true, exam: { select: { id: true, name: true, slug: true, isActive: true } } } }),
   ]);
 
   const c = Object.fromEntries(Object.entries(countRows[0] ?? {}).map(([k, v]) => [k, Number(v ?? 0)]));
@@ -152,15 +153,33 @@ export async function getOverview() {
     byPaper.set(a.paperId, e);
   }
   const topIds = [...byPaper.entries()].sort((a, b) => b[1].count - a[1].count).slice(0, 5);
-  const titles = new Map(paperTitles.map((p) => [p.id, p.title]));
+  const paperById = new Map(paperTitles.map((p) => [p.id, p]));
+
+  // Per exam: papers (published / all) and completed student mocks, for the exam tiles.
+  const examMap = new Map<string, { id: string; name: string; slug: string; theme: ExamTheme; papers: number; published: number; mocks: number }>();
+  for (const p of paperTitles) {
+    const e = examMap.get(p.exam.id) ?? { id: p.exam.id, name: p.exam.name, slug: p.exam.slug, theme: themeForPaper(p, p.exam.name), papers: 0, published: 0, mocks: 0 };
+    e.papers++;
+    if (p.isActive && p.exam.isActive) e.published++;
+    examMap.set(p.exam.id, e);
+  }
+  for (const a of completedMocks) {
+    const p = paperById.get(a.paperId);
+    const e = p && examMap.get(p.exam.id);
+    if (e) e.mocks++;
+  }
 
   return {
     counts: { students, activeStudents, papers, publishedPapers, questions, exams, attempts, completed, live, activeStudents30 },
     trend: { started7, startedPrev7 },
     mocks: { count: completedMocks.length, avgPercent: mean(pcts), avgAccuracy: mean(accs), avgTime: mean(completedMocks.map((a) => a.timeTaken).filter((x): x is number => x !== null)) },
     daily,
-    topPapers: topIds.map(([id, e]) => ({ id, title: titles.get(id) ?? "Deleted paper", attempts: e.count, avgPercent: mean(e.pcts) })),
-    recent: recent.map((a) => ({ ...a, percent: percentOf(a.score, totals.get(a.paperId)?.maxMarks) })),
+    exams: [...examMap.values()].sort((a, b) => b.published - a.published || a.name.localeCompare(b.name)),
+    topPapers: topIds.map(([id, e]) => {
+      const p = paperById.get(id);
+      return { id, title: p?.title ?? "Deleted paper", examName: p?.exam.name ?? "", theme: p ? themeForPaper(p, p.exam.name) : ("main" as ExamTheme), attempts: e.count, avgPercent: mean(e.pcts) };
+    }),
+    recent: recent.map((a) => ({ ...a, theme: themeForPaper(a.paper, a.paper.exam.name), percent: percentOf(a.score, totals.get(a.paperId)?.maxMarks) })),
   };
 }
 

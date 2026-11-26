@@ -5,6 +5,7 @@ import { getAnalytics, type AnalyticsFilter } from "@/server/admin-data";
 import { formatDate, formatDuration, formatMarks, formatPercent } from "@/lib/admin-format";
 import { Badge, BarChart, Card, EmptyState, PageHeader, ProgressBar, StatCard, tableCls } from "@/components/admin/ui";
 import { FilterForm, filterFieldCls } from "@/components/admin/filter-form";
+import { CircleCheck, Crosshair, Flame, Target, Trophy, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -56,10 +57,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Completed attempts" value={a.summary.completed} hint={`${a.summary.started} started · ${a.summary.started ? Math.round((a.summary.completed / a.summary.started) * 100) : 0}% finished`} />
-            <StatCard label="Students" value={a.summary.students} hint="With a completed attempt" />
-            <StatCard label="Average score" value={formatPercent(a.summary.avgPercent, 1)} hint="of max marks" />
-            <StatCard label="Average accuracy" value={formatPercent(a.summary.avgAccuracy, 1)} hint={`Avg time ${formatDuration(a.summary.avgTime)}`} />
+            <StatCard icon={CircleCheck} accent="green" label="Completed attempts" value={a.summary.completed} hint={`${a.summary.started} started · ${a.summary.started ? Math.round((a.summary.completed / a.summary.started) * 100) : 0}% finished`} />
+            <StatCard icon={Users} accent="blue" label="Students" value={a.summary.students} hint="With a completed attempt" />
+            <StatCard icon={Target} accent="crimson" label="Average score" value={formatPercent(a.summary.avgPercent, 1)} hint="of max marks" />
+            <StatCard icon={Crosshair} accent="saffron" label="Average accuracy" value={formatPercent(a.summary.avgAccuracy, 1)} hint={`Avg time ${formatDuration(a.summary.avgTime)}`} />
           </div>
 
           <Card className="mt-6" title="Papers" description={`${scope} · click a paper for section and question analysis`} bodyClassName="p-0">
@@ -176,10 +177,10 @@ function PaperDetail({ d, scope }: { d: Detail; scope: string }) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Completed attempts" value={d.attempts} />
-            <StatCard label="Students" value={d.leaderboard.length} />
-            <StatCard label="Top score" value={formatPercent(d.leaderboard[0]?.percent, 1)} hint={d.leaderboard[0] ? `${d.leaderboard[0].name} · ${formatMarks(d.leaderboard[0].score)} marks` : undefined} />
-            <StatCard label="Hardest question" value={hardest[0] ? `Q${hardest[0].number}` : "—"} hint={hardest[0] ? `${formatPercent(hardest[0].correctRate)} got it right` : undefined} />
+            <StatCard icon={CircleCheck} accent="green" label="Completed attempts" value={d.attempts} />
+            <StatCard icon={Users} accent="blue" label="Students" value={d.leaderboard.length} />
+            <StatCard icon={Trophy} accent="saffron" label="Top score" value={formatPercent(d.leaderboard[0]?.percent, 1)} hint={d.leaderboard[0] ? `${d.leaderboard[0].name} · ${formatMarks(d.leaderboard[0].score)} marks` : undefined} />
+            <StatCard icon={Flame} accent="crimson" label="Hardest question" value={hardest[0] ? `Q${hardest[0].number}` : "—"} hint={hardest[0] ? `${formatPercent(hardest[0].correctRate)} got it right` : undefined} />
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">

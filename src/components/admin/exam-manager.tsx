@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { themeForExam } from "@/lib/exam-theme";
 import {
   createExamAction,
   updateExamAction,
@@ -363,7 +364,10 @@ export function ExamManager({ initialExams }: { initialExams: ExamWithDetails[] 
                 >
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div className="flex items-start gap-3.5">
-                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-white font-semibold text-lg flex items-center justify-center shrink-0 shadow-xs">
+                      <div
+                        data-exam-theme={themeForExam({ name: exam.name })}
+                        className="w-12 h-12 rounded-xl bg-exam-dark text-white font-exam font-bold text-lg flex items-center justify-center shrink-0"
+                      >
                         {exam.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div>

@@ -52,7 +52,7 @@ export default async function AdminQuestionsPage({
       <div className="w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Question Bank</h2>
+            <h1 className="font-heading text-3xl font-semibold text-slate-900">Questions</h1>
             <p className="text-sm text-slate-500 mt-1">
               Add, edit, inspect, and manage individual questions for each examination paper.
             </p>
