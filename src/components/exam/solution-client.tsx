@@ -69,12 +69,16 @@ export function SolutionClient({ questions, answers, untimedAnswers = [] }: Solu
             return (
               <div key={q.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
                 <div className="bg-exam-tint px-6 py-3.5 border-b border-exam-line flex justify-between items-center gap-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-bold text-gray-900">Question {q.questionNumber}</h2>
                     {q.section && (
                       <span className="text-xs font-semibold bg-white text-exam-dark border border-exam-line px-2 py-0.5 rounded">
                         {q.section}
                       </span>
+                    )}
+                    {q.topic && <span className="text-xs font-medium text-gray-700">{q.topic}</span>}
+                    {q.difficulty && (
+                      <span className="text-xs font-medium text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded">{q.difficulty}</span>
                     )}
                   </div>
                   {status === "CORRECT" && <span className="text-st-answered font-bold text-sm">Correct</span>}

@@ -9,6 +9,7 @@ import { skipUntimedFormAction } from "@/server/actions/untimed";
 import { themeForPaper } from "@/lib/exam-theme";
 import { SiteHeader } from "@/components/site/site-header";
 import { ExamBadge } from "@/components/site/exam-badge";
+import { isSurprisePaper } from "@/lib/surprise";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export default async function ResultPage({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <SiteHeader name={name} isAdmin={isAdmin} back={{ href: "/exams", label: "All exams" }} />
+      <SiteHeader name={name} isAdmin={isAdmin} back={isSurprisePaper(attempt.paper) ? { href: "/surprise", label: "Surprise Test" } : { href: "/exams", label: "All exams" }} />
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-10 space-y-6">
         <div className="flex flex-wrap items-center gap-2">
@@ -269,10 +270,10 @@ export default async function ResultPage({
             </Link>
           )}
           <Link
-            href={`/papers/${attempt.paperId}`}
+            href={isSurprisePaper(attempt.paper) ? "/surprise" : `/papers/${attempt.paperId}`}
             className="inline-flex items-center justify-center bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 font-semibold px-6 h-11 rounded-lg"
           >
-            Take this paper again
+            {isSurprisePaper(attempt.paper) ? "Back to Surprise Test" : "Take this paper again"}
           </Link>
         </div>
       </main>

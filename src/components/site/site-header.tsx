@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { logoutAction } from "@/server/actions/auth";
+import { SiteNav } from "@/components/site/site-nav";
 
 /** Header for the student pages (main theme). */
 export function SiteHeader({ name, isAdmin, back }: { name: string; isAdmin: boolean; back?: { href: string; label: string } }) {
@@ -10,8 +11,9 @@ export function SiteHeader({ name, isAdmin, back }: { name: string; isAdmin: boo
         <div className="flex items-center gap-5 min-w-0">
           <Link href="/exams" className="flex items-center gap-2.5 font-semibold text-gray-900 shrink-0">
             <span className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center text-sm font-bold">M</span>
-            <span className="hidden sm:inline">Mock Test Portal</span>
+            <span className="hidden md:inline">Mock Test Portal</span>
           </Link>
+          <SiteNav />
           {back && (
             <Link href={back.href} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 truncate">
               <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden />

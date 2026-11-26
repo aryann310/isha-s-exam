@@ -5,6 +5,7 @@ import { redirect, notFound } from "next/navigation";
 import { hasSectionMarks } from "@/lib/exam-patterns";
 import { themeForExam } from "@/lib/exam-theme";
 import { paperProgress } from "@/server/untimed";
+import { SURPRISE_EXAM_SLUG } from "@/lib/surprise";
 import { SiteHeader } from "@/components/site/site-header";
 import { Check, FileText } from "lucide-react";
 
@@ -19,6 +20,7 @@ export default async function ExamPapersPage({
   if (!session) redirect("/login");
 
   const resolvedParams = await params;
+  if (resolvedParams.slug === SURPRISE_EXAM_SLUG) redirect("/surprise");
   const isAdmin = session.role === "ADMIN";
 
   // ponytail: findFirst avoids Prisma compound unique constraint error with isActive

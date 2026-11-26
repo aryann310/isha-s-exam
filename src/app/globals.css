@@ -184,6 +184,15 @@
   --exam-on-dark: #f6d3b8;
   --exam-font: var(--font-mukta), ui-sans-serif, system-ui, sans-serif;
 }
+[data-exam-theme="surprise"] {
+  --exam-dark: #2a1d5c;
+  --exam-primary: #4f3bc2;
+  --exam-primary-hover: #3e2e9c;
+  --exam-tint: #f1effc;
+  --exam-line: #d6d0f0;
+  --exam-on-dark: #d4cdf3;
+  --exam-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
 
 @layer base {
   * {

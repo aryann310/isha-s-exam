@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/site/site-header";
 import { ExamBadge } from "@/components/site/exam-badge";
 import { themeForExam, themeForPaper } from "@/lib/exam-theme";
+import { SURPRISE_EXAM_SLUG } from "@/lib/surprise";
+import { Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +38,9 @@ export default async function ExamsPage() {
     }),
   ]);
   // Students only see exams that have at least one published paper.
-  const exams = isAdmin ? allExams : allExams.filter((e) => e.papers.length > 0);
+  // The Surprise Test has its own tab, so it is left out of the exam grid.
+  const surprise = allExams.find((e) => e.slug === SURPRISE_EXAM_SLUG);
+  const exams = (isAdmin ? allExams : allExams.filter((e) => e.papers.length > 0)).filter((e) => e.slug !== SURPRISE_EXAM_SLUG);
   const name = (session.username as string) || (session.name as string) || "Student";
 
   return (
@@ -50,6 +54,27 @@ export default async function ExamsPage() {
             Mock tests follow each exam&apos;s real rules and timing. Practice shows the answer after every question.
           </p>
         </div>
+
+        {surprise && surprise.papers.length > 0 && (
+          <Link
+            href="/surprise"
+            data-exam-theme="surprise"
+            className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-exam-dark text-white rounded-2xl px-6 py-5 hover:shadow-md transition-shadow"
+          >
+            <span className="flex items-start gap-4">
+              <Sparkles className="w-8 h-8 shrink-0 mt-0.5" aria-hidden />
+              <span>
+                <span className="block font-semibold text-lg">Surprise Test</span>
+                <span className="block text-sm text-exam-on-dark mt-0.5">
+                  30 mixed questions from CAT, CMAT, SNAP and NMAT · 60 minutes · solutions right after you submit
+                </span>
+              </span>
+            </span>
+            <span className="shrink-0 inline-flex items-center justify-center bg-white text-exam-dark font-semibold text-sm px-4 h-10 rounded-lg group-hover:bg-exam-tint">
+              Take the surprise test &rarr;
+            </span>
+          </Link>
+        )}
 
         {exams.length === 0 ? (
           <div className="text-center text-gray-600 bg-white p-8 rounded-2xl border border-gray-200">
