@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import Link from "next/link";
 import { createStudentAction, deleteStudentAction, setStudentActiveAction, type StudentFormState } from "@/server/actions/admin";
 import { Badge, Card, btnCls, tableCls } from "@/components/admin/ui";
 
@@ -105,6 +106,9 @@ export function StudentManager({ users }: { users: StudentRow[] }) {
                     <td className={`${tableCls.td} whitespace-nowrap text-right`}>
                       {u.role === "STUDENT" && (
                         <div className="inline-flex gap-1">
+                          <Link href={`/analytics?student=${u.id}`} className={btnCls.ghost}>
+                            Analytics
+                          </Link>
                           {u.isActive ? (
                             <button type="button" disabled={busy} className={btnCls.ghost} onClick={() => run(() => setStudentActiveAction(u.id, false), `${u.name} can no longer sign in. Their history is kept.`)}>
                               Revoke access

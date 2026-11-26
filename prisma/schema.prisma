@@ -20,6 +20,7 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   attempts      Attempt[]
+  advisories    Advisory[]
 }
 
 model Exam {
@@ -145,4 +146,22 @@ model UntimedAnswer {
 
   @@unique([attemptId, questionId])
   @@index([questionId])
+}
+
+/// AI-written coaching advice for a student (Claude), one per scope: "all" tests or one exam's slug.
+/// `basis` records which tests it covered; when new tests are finished the advice is offered for refresh.
+model Advisory {
+  id           String   @id @default(cuid())
+  userId       String
+  scope        String
+  basis        String
+  content      String // JSON, see src/server/advisor.ts
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope])
 }
