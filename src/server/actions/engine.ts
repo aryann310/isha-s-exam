@@ -4,8 +4,8 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SAVE_GRACE_SECONDS } from "@/lib/attempt-timing";
 import { isAnswerCorrect, isAnswered, sectionKey } from "@/lib/exam-patterns";
-import { availableOptionKeys, parseQuestionOptions } from "@/lib/parse-markdown-questions";
 import { finalizeAttempt, loadAttemptContext, openSection, questionInOpenSection, whileAttemptOpen } from "@/server/attempts";
+import { attemptStatus, cleanResponse, fastSaveResponse, fastVisit } from "@/server/fast-save";
 
 type Fail = { ok: false; error: string; finished?: boolean };
 
@@ -13,17 +13,6 @@ async function requireSession() {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   return session;
-}
-
-/** The response in stored form: null for "no answer", undefined when it is not a valid answer to this question. */
-function cleanResponse(question: { questionType: string; options: string }, answer: string | null): string | null | undefined {
-  if (answer === null) return null;
-  const a = String(answer).trim();
-  if (!a) return null;
-  if (question.questionType === "TITA") return a.length <= 40 && /^[0-9a-zA-Z.,\-/: ]+$/.test(a) ? a : undefined;
-  const k = a.toUpperCase();
-  // Only letters the question actually offers (A-D, plus E on five-option papers).
-  return (availableOptionKeys(parseQuestionOptions(question.options)) as string[]).includes(k) ? k : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,8 +70,28 @@ export interface ResponseState {
   markedForReview: boolean;
 }
 
-/** Save & Next, Mark for Review & Next, and Clear Response all land here. */
+/**
+ * Save & Next, Mark for Review & Next, and Clear Response all land here. `visitNext` is the question the
+ * candidate moved to, marked as seen in the same request. Normally two database round trips (fast path);
+ * section changes, the end of the test and refusals go through the full path below.
+ */
 export async function saveResponseAction(
+  attemptId: string,
+  questionId: string,
+  response: ResponseState,
+  visitNext?: string | null
+): Promise<{ ok: true } | Fail> {
+  const fast = await fastSaveResponse({ attemptId, questionId, answer: response.answer, markedForReview: response.markedForReview, visitId: visitNext });
+  if (fast.kind === "saved") return { ok: true };
+  if (fast.kind === "ended") return { ok: false, error: "This test has ended.", finished: true };
+  if (fast.kind === "refused") return { ok: false, error: fast.error };
+  const res = await saveResponseFull(attemptId, questionId, response);
+  if (res.ok && visitNext) await visitFull(attemptId, visitNext).catch(() => undefined);
+  return res;
+}
+
+/** The original, fully checked save: brings the clock up to date (section changes, auto-submit) first. */
+async function saveResponseFull(
   attemptId: string,
   questionId: string,
   response: ResponseState
@@ -146,6 +155,21 @@ export async function saveResponseAction(
 
 /** Records that a question was opened, so the palette shows it as "Not Answered" instead of "Not Visited". */
 export async function visitQuestionAction(attemptId: string, questionId: string): Promise<{ ok: boolean }> {
+  const fast = await fastVisit(attemptId, questionId);
+  if (fast.kind === "saved") return { ok: true };
+  if (fast.kind !== "fallback") return { ok: false };
+  return visitFull(attemptId, questionId);
+}
+
+/**
+ * Keeps the database and server warm during a test and tells the page whether the attempt is still running.
+ * The page calls it only after a few quiet minutes; normal saves keep things warm on their own.
+ */
+export async function keepAliveAction(attemptId: string): Promise<{ status: string | null }> {
+  return { status: await attemptStatus(attemptId) };
+}
+
+async function visitFull(attemptId: string, questionId: string): Promise<{ ok: boolean }> {
   const session = await requireSession();
   const ctx = await loadAttemptContext(attemptId, session);
   if (!ctx || ctx.attempt.status !== "IN_PROGRESS") return { ok: false };
