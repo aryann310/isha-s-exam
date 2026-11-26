@@ -16,28 +16,25 @@ export default function GlobalError({
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 font-sans">
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 md:p-12 max-w-md w-full text-center shadow-xs">
-        <div className="w-16 h-16 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-black text-rose-600">
-          ⚠
-        </div>
-        <h1 className="text-2xl font-black text-gray-950 mb-2">Something went wrong</h1>
-        <p className="text-sm text-gray-500 mb-2">
+      <div className="bg-white border border-gray-200 rounded-2xl p-8 md:p-10 max-w-md w-full text-center">
+        <h1 className="font-heading text-3xl font-semibold text-gray-900 mb-2">Something went wrong</h1>
+        <p className="text-sm text-gray-600 mb-4">
           An unexpected error occurred while rendering this page.
         </p>
-        <div className="bg-red-50 text-red-600 text-xs p-3 rounded mb-6 text-left overflow-auto font-mono">
+        <div className="bg-red-50 text-red-800 text-xs p-3 rounded-lg mb-6 text-left overflow-auto font-mono">
           {error.message || "Unknown error"}
-          {error.digest && <div className="mt-1 text-red-400">Digest: {error.digest}</div>}
+          {error.digest && <div className="mt-1 text-red-700">Digest: {error.digest}</div>}
         </div>
         <div className="flex gap-3 justify-center">
           <button
             onClick={() => reset()}
-            className="bg-gray-950 text-white font-bold px-6 py-3 rounded-xl text-sm hover:bg-gray-800 transition-colors shadow-sm"
+            className="bg-gray-900 text-white font-semibold px-6 h-11 rounded-lg text-sm hover:bg-gray-800 transition-colors"
           >
-            Try Again
+            Try again
           </button>
           <Link
             href="/exams"
-            className="bg-white border border-gray-300 text-gray-900 font-bold px-6 py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center bg-white border border-gray-300 text-gray-900 font-semibold px-6 h-11 rounded-lg text-sm hover:bg-gray-100 transition-colors"
           >
             Home
           </Link>

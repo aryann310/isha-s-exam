@@ -6,6 +6,7 @@ import { loadAttemptContext } from "@/server/attempts";
 import { untimedPending } from "@/server/untimed";
 import { getPattern, isAnswered, marksFor, parseQuestionTypeSafe, sectionKey } from "@/lib/exam-patterns";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
+import { themeForPaper } from "@/lib/exam-theme";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,7 @@ export default async function ContinuePage({ params }: { params: Promise<{ attem
   return (
     <UntimedPhase
       attemptId={attemptId}
+      theme={themeForPaper(ctx.paper)}
       paperTitle={ctx.paper.title}
       patternLabel={pattern.label}
       calculator={pattern.calculator}

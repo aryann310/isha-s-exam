@@ -10,6 +10,7 @@ import { finishUntimedAction, saveUntimedAnswerAction } from "@/server/actions/u
 import { useSaveQueue, type SaveJob } from "@/components/exam/use-save-queue";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { ExamCalculator } from "@/components/exam/exam-calculator";
+import type { ExamTheme } from "@/lib/exam-theme";
 
 export interface UntimedQuestion {
   id: string;
@@ -23,6 +24,7 @@ export interface UntimedQuestion {
 
 interface Props {
   attemptId: string;
+  theme: ExamTheme;
   paperTitle: string;
   patternLabel: string;
   calculator: boolean;
@@ -32,7 +34,7 @@ interface Props {
 
 const KEYPAD = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "-"];
 
-export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, questions, initialAnswers }: Props) {
+export function UntimedPhase({ attemptId, theme, paperTitle, patternLabel, calculator, questions, initialAnswers }: Props) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
   const [current, setCurrent] = useState(() => Math.max(0, questions.findIndex((q) => !initialAnswers[q.id])));
@@ -131,10 +133,10 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
 
   if (!q) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div data-exam-theme={theme} className="min-h-screen flex items-center justify-center bg-gray-50 p-6 font-exam">
         <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md text-center">
           <p className="font-semibold text-gray-900 mb-4">No questions are left to answer.</p>
-          <button onClick={finish} className="bg-gray-950 text-white font-bold px-6 py-3 rounded-xl text-sm">See result &amp; solutions</button>
+          <button onClick={finish} className="bg-exam-primary hover:bg-exam-primary-hover text-white font-bold px-6 py-3 rounded-lg text-sm">See result &amp; solutions</button>
         </div>
       </div>
     );
@@ -144,10 +146,10 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
   const changed = (answers[q.id] ?? null) !== draft;
 
   return (
-    <div className="min-h-screen lg:h-screen flex flex-col bg-white text-gray-900">
-      <header className="flex-none bg-gray-950 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div data-exam-theme={theme} className="min-h-screen lg:h-screen flex flex-col bg-white text-gray-900 font-exam">
+      <header className="flex-none bg-exam-dark text-white px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">{patternLabel} · Untimed phase · No time limit</p>
+          <p className="text-[11px] uppercase tracking-wider text-exam-on-dark font-semibold">{patternLabel} · Untimed phase · No time limit</p>
           <h1 className="font-bold truncate">{paperTitle}</h1>
         </div>
         <div className="flex items-center gap-3">
@@ -160,7 +162,7 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
           <button
             onClick={() => setConfirming(true)}
             disabled={finishing}
-            className="text-sm font-bold bg-white text-gray-950 px-4 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+            className="text-sm font-bold bg-white text-exam-dark px-4 py-2 rounded-lg hover:bg-gray-100 disabled:opacity-50"
           >
             Finish &amp; see solutions
           </button>
@@ -181,14 +183,14 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
 
       <div className="flex-1 flex flex-col lg:flex-row lg:min-h-0">
         <main className="flex-1 flex flex-col min-w-0 lg:min-h-0">
-          <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-gray-200">
+          <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-exam-line bg-exam-tint">
             <span className="font-bold">
               Question No. {q.number} <span className="ml-2 text-xs font-semibold text-gray-500">{q.section}</span>
             </span>
             <span className="text-xs text-gray-600">
               {q.type === "TITA" ? "Type in the Answer" : "Multiple Choice"} ·{" "}
-              <span className="text-green-700 font-semibold">+{q.marks.correct}</span> /{" "}
-              <span className="text-red-700 font-semibold">{q.marks.incorrect === 0 ? "0" : q.marks.incorrect}</span>
+              <span className="text-st-answered font-semibold">+{q.marks.correct}</span> /{" "}
+              <span className="text-st-not-answered font-semibold">{q.marks.incorrect === 0 ? "0" : q.marks.incorrect}</span>
             </span>
           </div>
 
@@ -199,9 +201,9 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
                 {optionKeys.map((k) => (
                   <label
                     key={k}
-                    className={`flex items-start gap-3 p-2.5 rounded border cursor-pointer ${draft === k ? "border-gray-900 bg-gray-100" : "border-transparent hover:bg-gray-50"}`}
+                    className={`flex items-start gap-3 p-2.5 rounded border cursor-pointer ${draft === k ? "border-exam-primary bg-exam-tint" : "border-transparent hover:bg-gray-50"}`}
                   >
-                    <input type="radio" name={`q-${q.id}`} checked={draft === k} onChange={() => setDraft(k)} className="mt-1 w-4 h-4 accent-gray-900" />
+                    <input type="radio" name={`q-${q.id}`} checked={draft === k} onChange={() => setDraft(k)} className="mt-1 w-[18px] h-[18px] accent-exam-primary" />
                     <span className="font-semibold w-5">{k}.</span>
                     <span className="flex-1" dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.options[k]) }} />
                   </label>
@@ -248,7 +250,7 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
               <button
                 onClick={() => save(draft, true)}
                 disabled={!draft || finishing}
-                className="px-6 py-2 text-sm font-bold rounded bg-gray-950 text-white hover:bg-gray-800 disabled:opacity-50"
+                className="px-6 py-2 text-sm font-bold rounded bg-exam-primary text-white hover:bg-exam-primary-hover disabled:opacity-50"
               >
                 {changed ? "Save & Next" : "Next"}
               </button>
@@ -271,7 +273,7 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
                     onClick={() => goTo(index)}
                     aria-label={`Question ${item.number}${answers[item.id] ? ", answered" : ""}`}
                     aria-current={index === current ? "true" : undefined}
-                    className={`h-9 rounded text-xs font-bold border ${answers[item.id] ? "bg-green-600 border-green-700 text-white" : "bg-white border-gray-300 text-gray-800"} ${index === current ? "ring-2 ring-offset-1 ring-gray-900" : ""}`}
+                    className={`h-9 rounded text-xs font-bold border ${answers[item.id] ? "bg-st-answered border-st-answered text-white" : "bg-white border-st-not-visited-line text-gray-800"} ${index === current ? "ring-2 ring-offset-1 ring-exam-primary" : ""}`}
                   >
                     {item.number}
                   </button>
@@ -301,7 +303,7 @@ export function UntimedPhase({ attemptId, paperTitle, patternLabel, calculator, 
                   setConfirming(false);
                   void finish();
                 }}
-                className="px-4 py-2 text-sm font-bold rounded-lg bg-gray-950 text-white"
+                className="px-4 py-2 text-sm font-bold rounded-lg bg-exam-primary hover:bg-exam-primary-hover text-white"
               >
                 Finish
               </button>

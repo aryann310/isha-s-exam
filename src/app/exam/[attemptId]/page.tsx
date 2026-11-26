@@ -7,6 +7,7 @@ import { paletteStatus, type PaletteStatus } from "@/components/exam/palette-sym
 import { loadAttemptContext } from "@/server/attempts";
 import { getPattern, marksFor, patternInstructions, parseQuestionTypeSafe, sectionKey } from "@/lib/exam-patterns";
 import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
+import { themeForPaper } from "@/lib/exam-theme";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
       const answered = answers.find((a) => a.questionId === q.id && a.selectedAnswer);
       return { ...q, correctAnswer: answered ? q.correctAnswer : "", explanation: answered ? q.explanation : "" };
     });
-    return <ExamEngine attempt={ctx.attempt} paper={ctx.paper} questions={safe} initialAnswers={answers} />;
+    return <ExamEngine theme={themeForPaper(ctx.paper)} attempt={ctx.attempt} paper={ctx.paper} questions={safe} initialAnswers={answers} />;
   }
 
   // ---------------- Mock: exam replica ----------------
@@ -81,6 +82,7 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
       attemptId={attemptId}
       paperTitle={p.title}
       patternLabel={getPattern(p.examPattern).label}
+      theme={themeForPaper(p)}
       candidateName={(session.name as string) || (session.username as string) || "Candidate"}
       sectional={timing.sectional}
       currentSectionIndex={timing.currentSection}

@@ -26,12 +26,12 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+        <div role="alert" className="p-3 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg">
           {error}
         </div>
       )}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold uppercase tracking-wider text-gray-700" htmlFor="username">
+        <label className="text-sm font-semibold text-gray-800" htmlFor="username">
           Username
         </label>
         <input
@@ -41,29 +41,31 @@ export function LoginForm() {
           autoCapitalize="none"
           autoCorrect="off"
           required
-          className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-          placeholder="e.g. Aryansinh or ishubaby"
+          className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+          autoComplete="username"
+          placeholder="Your username"
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs font-bold uppercase tracking-wider text-gray-700" htmlFor="password">
+        <label className="text-sm font-semibold text-gray-800" htmlFor="password">
           Password
         </label>
         <input
           id="password"
           name="password"
           type="password"
+          autoComplete="current-password"
           required
-          className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+          className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
           placeholder="••••••••"
         />
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="inline-flex items-center justify-center rounded-lg text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 disabled:opacity-50 bg-gray-900 text-white hover:bg-gray-800 h-11 w-full shadow-sm mt-2"
+        className="inline-flex items-center justify-center rounded-lg text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 disabled:opacity-50 bg-gray-900 text-white hover:bg-gray-800 h-11 w-full mt-2"
       >
-        {loading ? "Verifying Credentials..." : "SIGN IN"}
+        {loading ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );

@@ -7,6 +7,8 @@ import { useSaveQueue, type SaveJob } from "@/components/exam/use-save-queue";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { ExamCalculator } from "@/components/exam/exam-calculator";
 import { PALETTE_LABELS, PALETTE_ORDER, PaletteSymbol, paletteStatus, type PaletteStatus } from "@/components/exam/palette-symbol";
+import type { ExamTheme } from "@/lib/exam-theme";
+import { Calculator, Check, FileText, Info, Lock, X } from "lucide-react";
 
 export interface MockQuestion {
   id: string;
@@ -39,6 +41,8 @@ interface Props {
   attemptId: string;
   paperTitle: string;
   patternLabel: string;
+  /** Colours and font of this exam (CAT, NMAT, SNAP, CMAT). */
+  theme: ExamTheme;
   candidateName: string;
   sectional: boolean;
   currentSectionIndex: number;
@@ -328,7 +332,7 @@ export function MockExamEngine(props: Props) {
 
   if (!q) {
     return (
-      <div className="h-screen flex items-center justify-center text-gray-600">
+      <div data-exam-theme={props.theme} className="h-screen flex items-center justify-center font-exam text-gray-600">
         {ending ? "Loading the next section…" : "This section has no questions."}
       </div>
     );
@@ -336,40 +340,49 @@ export function MockExamEngine(props: Props) {
 
   const marks = q.marks;
   const optionKeys = Object.keys(q.options).filter((k) => q.options[k]?.trim());
+  const toolButton = "flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium text-white hover:bg-white/10";
+  const barButton =
+    "h-10 px-4 rounded-md border border-gray-400 bg-white text-sm font-semibold text-gray-900 hover:bg-gray-100 disabled:opacity-50";
+  const primaryButton = "h-10 px-6 rounded-md bg-exam-primary hover:bg-exam-primary-hover text-white text-sm font-bold disabled:opacity-50";
+  const submitButton = "w-full h-11 rounded-md font-bold text-white bg-exam-dark hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed";
 
   return (
-    <div className="h-screen flex flex-col bg-white text-gray-900 select-none" onContextMenu={(e) => e.preventDefault()}>
+    <div
+      data-exam-theme={props.theme}
+      className="h-screen flex flex-col bg-white text-gray-900 font-exam select-none"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* Top bar */}
-      <header className="flex-none bg-[#1f4e79] text-white flex items-center justify-between px-3 md:px-4 py-2 gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wider opacity-75">{props.patternLabel} · Mock Test</p>
-          <h1 className="font-bold truncate">{props.paperTitle}</h1>
+      <header className="flex-none bg-exam-dark text-white flex flex-wrap items-center justify-between px-3 md:px-5 py-2 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="shrink-0 px-2 py-1 rounded bg-white text-exam-dark text-xs font-bold leading-none">{props.patternLabel}</span>
+          <h1 className="font-semibold truncate">
+            {props.paperTitle} <span className="hidden sm:inline font-normal text-exam-on-dark">· Mock test</span>
+          </h1>
         </div>
-        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+        <nav aria-label="Exam tools" className="flex items-center gap-1 shrink-0">
+          <button onClick={() => setModal("instructions")} className={toolButton}>
+            <Info className="w-4 h-4" aria-hidden />
+            <span className="hidden sm:inline">Instructions</span>
+          </button>
           {!linear && (
-            <button onClick={() => setModal("paper")} className="hidden sm:inline text-xs font-semibold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded">
+            <button onClick={() => setModal("paper")} className={`${toolButton} hidden sm:flex`}>
+              <FileText className="w-4 h-4" aria-hidden />
               Question Paper
             </button>
           )}
-          <button onClick={() => setModal("instructions")} className="text-xs font-semibold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded">
-            Instructions
-          </button>
           {props.calculator && (
-            <button onClick={() => setShowCalc((v) => !v)} className="text-xs font-semibold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded" aria-label="Calculator">
-              🖩 Calculator
+            <button onClick={() => setShowCalc((v) => !v)} className={toolButton} aria-label="Calculator">
+              <Calculator className="w-4 h-4" aria-hidden />
+              <span className="hidden sm:inline">Calculator</span>
             </button>
           )}
-          <div className="hidden md:flex items-center gap-2 pl-2 border-l border-white/20">
-            <div className="w-8 h-8 rounded bg-white/20 flex items-center justify-center font-bold">{props.candidateName.slice(0, 1).toUpperCase()}</div>
-            <span className="text-sm font-semibold max-w-[10rem] truncate">{props.candidateName}</span>
-          </div>
-        </div>
+        </nav>
       </header>
 
       {/* Section bar + timer */}
-      <div className="flex-none border-b border-gray-300 bg-[#eef3f8] flex items-stretch justify-between gap-2 px-2">
-        <div className="flex items-stretch overflow-x-auto">
-          <span className="hidden sm:flex items-center text-xs font-bold text-gray-600 px-2">Sections</span>
+      <div className="flex-none border-b border-exam-line bg-exam-tint flex flex-wrap items-stretch justify-between gap-x-4 pr-3 md:pr-5">
+        <div role="tablist" aria-label="Sections" className="flex items-stretch overflow-x-auto">
           {sections.map((s) => {
             const active = s.name === q.section;
             const clickable = s.state === "open";
@@ -377,46 +390,50 @@ export function MockExamEngine(props: Props) {
             return (
               <button
                 key={s.name}
+                role="tab"
+                aria-selected={active}
                 disabled={!clickable || firstOfSection === -1}
                 onClick={() => clickable && goTo(firstOfSection)}
                 title={s.state === "done" ? "Section submitted" : s.state === "upcoming" ? "Opens after the current section" : s.name}
-                className={`px-3 py-2 text-xs font-semibold border-x border-transparent whitespace-nowrap ${
-                  active ? "bg-[#1f4e79] text-white" : clickable ? "text-[#1f4e79] hover:bg-white" : "text-gray-400 cursor-not-allowed"
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap ${
+                  active ? "bg-exam-dark text-white" : clickable ? "text-exam-dark hover:bg-white" : "text-gray-500 cursor-not-allowed"
                 }`}
               >
-                {s.state === "done" && "✓ "}
-                {s.state === "upcoming" && "🔒 "}
+                {s.state === "done" && <Check className="w-3.5 h-3.5" aria-label="Submitted" />}
+                {s.state === "upcoming" && <Lock className="w-3.5 h-3.5" aria-label="Locked" />}
                 {s.name}
               </button>
             );
           })}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 py-1.5 ml-auto">
           <span
             role="status"
             aria-live="polite"
-            className={`hidden sm:inline text-[11px] font-semibold whitespace-nowrap ${retrying ? "text-amber-700" : "text-gray-500"}`}
+            className={`hidden sm:inline text-xs font-semibold whitespace-nowrap ${retrying ? "text-amber-800" : "text-gray-600"}`}
           >
             {retrying ? "Connection problem, retrying to save…" : pending > 0 ? "Saving…" : "All answers saved"}
           </span>
           {remaining !== null && (
-            <div className={`flex items-center gap-2 px-3 text-sm font-bold whitespace-nowrap ${remaining <= 300 ? "text-red-600" : "text-gray-900"}`}>
-              <span className="text-xs font-semibold text-gray-600">{sectional ? "Section Time Left" : "Time Left"}:</span>
-              <span className="font-mono text-base">{clock(remaining)}</span>
+            <div className="flex items-baseline gap-2 whitespace-nowrap">
+              <span className="text-xs font-semibold text-gray-600">{sectional ? "Section time left" : "Time left"}</span>
+              <span className={`text-xl font-bold tabular-nums ${remaining <= 300 ? "text-st-not-answered" : "text-exam-dark"}`}>{clock(remaining)}</span>
             </div>
           )}
         </div>
       </div>
       {retrying && (
-        <div className="sm:hidden flex-none bg-amber-50 border-b border-amber-200 text-amber-800 text-xs px-4 py-1.5">
+        <div className="sm:hidden flex-none bg-amber-50 border-b border-amber-200 text-amber-900 text-xs px-4 py-1.5">
           Connection problem: your answers are kept and will be saved when you are back online.
         </div>
       )}
 
       {error && (
-        <div role="alert" className="flex-none bg-red-50 border-b border-red-200 text-red-800 text-sm px-4 py-2 flex justify-between">
+        <div role="alert" className="flex-none bg-red-50 border-b border-red-200 text-red-900 text-sm px-4 py-2 flex justify-between gap-3">
           <span>{error}</span>
-          <button onClick={() => setError(null)} aria-label="Dismiss" className="font-bold">✕</button>
+          <button onClick={() => setError(null)} aria-label="Dismiss">
+            <X className="w-4 h-4" aria-hidden />
+          </button>
         </div>
       )}
 
@@ -430,132 +447,155 @@ export function MockExamEngine(props: Props) {
                 ? "Submit the test to see your result. Answers can no longer be changed."
                 : "Submit this section to move on to the next one. The time left in this section is not carried over."}
             </p>
-            <button
-              onClick={() => setModal("submit")}
-              disabled={busy}
-              className="px-8 py-2.5 rounded font-bold text-white bg-[#3d9b35] hover:bg-[#2f7d29] disabled:opacity-50"
-            >
+            <button onClick={() => setModal("submit")} disabled={busy} className={`${primaryButton} h-11 px-8`}>
               {submitLabel}
             </button>
           </main>
         ) : (
-        <main className="flex-1 flex flex-col min-w-0">
-          <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-gray-300">
-            <span className="font-bold">Question No. {q.number}</span>
-            <span className="text-xs text-gray-600">
-              {q.type === "TITA" ? "Type in the Answer" : "Multiple Choice"} ·{" "}
-              <span className="text-green-700 font-semibold">+{marks.correct}</span> /{" "}
-              <span className="text-red-700 font-semibold">{marks.incorrect === 0 ? "0" : marks.incorrect}</span>
-            </span>
-          </div>
+          <main className="flex-1 flex flex-col min-w-0">
+            <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 md:px-7 py-3 border-b border-gray-200">
+              <h2 className="font-bold text-[17px]">
+                Question {q.number}
+                {linear && <span className="font-normal text-gray-600"> · {current + 1} of {questions.length}</span>}
+              </h2>
+              <span className="text-[13px] text-gray-600">
+                {q.type === "TITA" ? "Type in the answer" : "Multiple choice"} ·{" "}
+                <strong className="text-st-answered">+{marks.correct}</strong> correct ·{" "}
+                {marks.incorrect === 0 ? (
+                  "no negative marking"
+                ) : (
+                  <>
+                    <strong className="text-st-not-answered">{marks.incorrect}</strong> wrong
+                  </>
+                )}
+              </span>
+            </div>
 
-          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
-            <div className="prose prose-sm max-w-none mb-6" dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.text) }} />
+            <div className="flex-1 overflow-y-auto px-4 md:px-7 py-6">
+              <div className="max-w-4xl">
+                <div
+                  className="prose prose-sm max-w-none mb-6 text-[17px] leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.text) }}
+                />
 
-            {q.type === "MCQ" ? (
-              <div className="space-y-2.5" role="radiogroup">
-                {optionKeys.map((k) => (
-                  <label
-                    key={k}
-                    className={`flex items-start gap-3 p-2.5 rounded border cursor-pointer ${draft === k ? "border-[#1f4e79] bg-[#eef3f8]" : "border-transparent hover:bg-gray-50"}`}
-                  >
-                    <input type="radio" name={`q-${q.id}`} checked={draft === k} onChange={() => setDraft(k)} className="mt-1 w-4 h-4 accent-[#1f4e79]" />
-                    <span className="font-semibold w-5">{k}.</span>
-                    <span className="flex-1" dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.options[k]) }} />
-                  </label>
-                ))}
+                {q.type === "MCQ" ? (
+                  <div className="space-y-2" role="radiogroup" aria-label="Options">
+                    {optionKeys.map((k) => (
+                      <label
+                        key={k}
+                        className={`flex items-start gap-3 px-3.5 py-3 rounded-lg border cursor-pointer text-base ${
+                          draft === k ? "border-exam-primary bg-exam-tint" : "border-transparent hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`q-${q.id}`}
+                          checked={draft === k}
+                          onChange={() => setDraft(k)}
+                          className="mt-1 w-[18px] h-[18px] accent-exam-primary"
+                        />
+                        <span className="font-bold w-5">{k}.</span>
+                        <span className="flex-1" dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(q.options[k]) }} />
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="max-w-xs space-y-2">
+                    <input
+                      readOnly
+                      value={draft ?? ""}
+                      aria-label="Your answer"
+                      className="w-full border-2 border-gray-400 rounded-md px-3 py-2 font-mono text-lg bg-white"
+                    />
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {KEYPAD.map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => setDraft((d) => ((d ?? "").length < 20 ? `${d ?? ""}${k}` : d))}
+                          className="h-11 rounded-md border border-gray-300 bg-white font-semibold hover:bg-gray-100"
+                        >
+                          {k}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setDraft((d) => (d ? d.slice(0, -1) || null : null))}
+                        className="h-11 col-span-2 rounded-md border border-gray-300 bg-gray-100 text-sm font-semibold hover:bg-gray-200"
+                      >
+                        Backspace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDraft(null)}
+                        className="h-11 rounded-md border border-gray-300 bg-gray-100 text-sm font-semibold hover:bg-gray-200"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action bar */}
+            {linear ? (
+              <div className="flex-none border-t border-gray-200 bg-gray-50 px-4 md:px-7 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[13px] text-gray-600">Pick an answer to continue. You cannot come back to this question.</span>
+                <div className="flex gap-2">
+                  <button onClick={() => setPaletteOpen(true)} className={`${barButton} md:hidden`}>
+                    Progress
+                  </button>
+                  <button onClick={saveAndNext} disabled={busy || !draft} className={`${primaryButton} px-8`}>
+                    Next
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="max-w-xs space-y-2">
-                <input
-                  readOnly
-                  value={draft ?? ""}
-                  aria-label="Your answer"
-                  className="w-full border-2 border-gray-400 rounded px-3 py-2 font-mono text-lg bg-white"
-                />
-                <div className="grid grid-cols-3 gap-1.5">
-                  {KEYPAD.map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setDraft((d) => ((d ?? "").length < 20 ? `${d ?? ""}${k}` : d))}
-                      className="h-10 rounded border border-gray-300 bg-gradient-to-b from-white to-gray-100 font-semibold hover:to-gray-200"
-                    >
-                      {k}
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => setDraft((d) => (d ? d.slice(0, -1) || null : null))} className="h-10 col-span-2 rounded border border-gray-300 bg-gray-100 text-sm font-semibold">
-                    Backspace
+              <div className="flex-none border-t border-gray-200 bg-gray-50 px-3 md:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={markAndNext} disabled={busy} className={barButton}>
+                    Mark for Review &amp; Next
                   </button>
-                  <button type="button" onClick={() => setDraft(null)} className="h-10 rounded border border-gray-300 bg-gray-100 text-sm font-semibold">
-                    Clear All
+                  <button onClick={clearResponse} disabled={busy} className={barButton}>
+                    Clear Response
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => goTo(Math.max(0, current - 1))} disabled={current === 0} className={barButton}>
+                    Back
+                  </button>
+                  <button onClick={() => setPaletteOpen(true)} className={`${barButton} md:hidden`}>
+                    Palette
+                  </button>
+                  <button onClick={saveAndNext} disabled={busy} className={primaryButton}>
+                    Save &amp; Next
                   </button>
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Action bar */}
-          {linear ? (
-            <div className="flex-none border-t border-gray-300 bg-gray-50 px-3 py-2 flex items-center justify-between gap-2">
-              <span className="text-xs text-gray-600">Answer this question to continue. You cannot come back to it.</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={saveAndNext}
-                  disabled={busy || !draft}
-                  className="px-6 py-2 text-sm font-bold rounded bg-[#2a7ab8] text-white hover:bg-[#21689e] disabled:opacity-50"
-                >
-                  Next
-                </button>
-                <button onClick={() => setPaletteOpen(true)} className="md:hidden px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white">
-                  Progress
-                </button>
-              </div>
-            </div>
-          ) : (
-          <div className="flex-none border-t border-gray-300 bg-gray-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex gap-2">
-              <button onClick={markAndNext} disabled={busy} className="px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white hover:bg-gray-100 disabled:opacity-50">
-                Mark for Review &amp; Next
-              </button>
-              <button onClick={clearResponse} disabled={busy} className="px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white hover:bg-gray-100 disabled:opacity-50">
-                Clear Response
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => goTo(Math.max(0, current - 1))} disabled={current === 0} className="px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white hover:bg-gray-100 disabled:opacity-40">
-                Back
-              </button>
-              <button onClick={saveAndNext} disabled={busy} className="px-5 py-2 text-sm font-bold rounded bg-[#2a7ab8] text-white hover:bg-[#21689e] disabled:opacity-50">
-                Save &amp; Next
-              </button>
-              <button onClick={() => setPaletteOpen(true)} className="md:hidden px-3 py-2 text-sm font-semibold rounded border border-gray-400 bg-white">
-                Palette
-              </button>
-            </div>
-          </div>
-          )}
-        </main>
+          </main>
         )}
 
         {/* Palette */}
         <aside
-          className={`${paletteOpen ? "fixed inset-0 z-40 flex" : "hidden"} md:static md:flex md:z-auto w-full md:w-80 flex-col border-l border-gray-300 bg-[#f7f9fb]`}
+          aria-label={linear ? "Section progress" : "Question palette"}
+          className={`${paletteOpen ? "fixed inset-0 z-40 flex" : "hidden"} md:static md:flex md:z-auto w-full md:w-[340px] flex-col border-l border-exam-line bg-gray-50`}
         >
-          <div className="flex-none flex items-center gap-3 p-3 border-b border-gray-300">
-            <div className="w-12 h-12 rounded bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-700">
+          <div className="flex-none flex items-center gap-3 px-4 py-3.5 border-b border-gray-200">
+            <div className="w-11 h-11 rounded-md bg-exam-tint border border-exam-line flex items-center justify-center text-lg font-bold text-exam-dark">
               {props.candidateName.slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-gray-500">Candidate</p>
+              <p className="text-xs text-gray-600">Candidate</p>
               <p className="font-semibold truncate">{props.candidateName}</p>
             </div>
-            <button onClick={() => setPaletteOpen(false)} className="md:hidden text-xl font-bold px-2" aria-label="Close palette">
-              ✕
+            <button onClick={() => setPaletteOpen(false)} className="md:hidden p-2" aria-label="Close palette">
+              <X className="w-5 h-5" aria-hidden />
             </button>
           </div>
 
-          <ul className="flex-none grid grid-cols-2 gap-x-2 gap-y-2 p-3 border-b border-gray-300 text-[11px] leading-tight">
+          <ul className="flex-none grid grid-cols-2 gap-x-2 gap-y-2.5 px-4 py-3.5 border-b border-gray-200 text-xs leading-tight">
             {legend.map((st) => (
               <li key={st} className={`flex items-center gap-2 ${st === "answeredMarked" ? "col-span-2" : ""}`}>
                 <PaletteSymbol status={st} label={counts[st]} size="sm" />
@@ -564,19 +604,25 @@ export function MockExamEngine(props: Props) {
             ))}
           </ul>
 
-          <div className="flex-none bg-[#1f4e79] text-white text-xs font-bold px-3 py-1.5 truncate">{currentSection?.name}</div>
-          <p className="flex-none text-[11px] font-semibold text-gray-600 px-3 pt-2">
-            {linear ? `Progress: ${answeredInSection} of ${sectionQuestions.length} answered` : "Choose a Question"}
+          <div className="flex-none bg-exam-dark text-white text-[13px] font-bold px-4 py-2 truncate">{currentSection?.name}</div>
+          <p className="flex-none text-xs font-semibold text-gray-600 px-4 pt-2.5">
+            {linear ? `Progress: ${answeredInSection} of ${sectionQuestions.length} answered` : "Choose a question"}
           </p>
-          <div className="flex-1 overflow-y-auto p-3">
-            <div className="grid grid-cols-5 gap-2.5">
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            <div className="grid grid-cols-5 gap-3">
               {sectionQuestions.map(({ item, i }) =>
                 linear ? (
                   <span key={item.id} title={PALETTE_LABELS[status(item.id)]} className="flex justify-center">
                     <PaletteSymbol status={status(item.id)} label={item.number} current={!allAnswered && i === current} />
                   </span>
                 ) : (
-                  <button key={item.id} onClick={() => goTo(i)} title={PALETTE_LABELS[status(item.id)]} className="flex justify-center">
+                  <button
+                    key={item.id}
+                    onClick={() => goTo(i)}
+                    title={PALETTE_LABELS[status(item.id)]}
+                    aria-label={`Question ${item.number}, ${PALETTE_LABELS[status(item.id)]}`}
+                    className="flex justify-center"
+                  >
                     <PaletteSymbol status={status(item.id)} label={item.number} current={i === current} />
                   </button>
                 )
@@ -584,16 +630,12 @@ export function MockExamEngine(props: Props) {
             </div>
           </div>
 
-          <div className="flex-none p-3 border-t border-gray-300 space-y-1.5">
-            <button
-              onClick={() => setModal("submit")}
-              disabled={!submitAllowed || busy}
-              className="w-full py-2.5 rounded font-bold text-white bg-[#3d9b35] hover:bg-[#2f7d29] disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
+          <div className="flex-none px-4 py-3 border-t border-gray-200 space-y-1.5">
+            <button onClick={() => setModal("submit")} disabled={!submitAllowed || busy} className={submitButton}>
               {submitLabel}
             </button>
             {!submitAllowed && (
-              <p className="text-[11px] text-gray-600 text-center">
+              <p className="text-xs text-gray-600 text-center">
                 {sectional ? "This section ends automatically when its time is over." : "The test ends automatically when the time is over."}
               </p>
             )}
@@ -606,19 +648,26 @@ export function MockExamEngine(props: Props) {
       {/* Modals */}
       {modal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !busy && setModal(null)}>
-          <div className="bg-white rounded shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex-none flex justify-between items-center bg-[#1f4e79] text-white px-4 py-2 rounded-t">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex-none flex justify-between items-center bg-exam-dark text-white px-5 py-3">
               <h2 className="font-bold">
                 {modal === "submit" ? (sectional && !props.isLastSection ? "Submit Section" : "Exam Summary") : modal === "instructions" ? "Instructions" : "Question Paper"}
               </h2>
-              <button onClick={() => !busy && setModal(null)} className="font-bold">✕</button>
+              <button onClick={() => !busy && setModal(null)} aria-label="Close">
+                <X className="w-5 h-5" aria-hidden />
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 text-sm">
+            <div className="flex-1 overflow-y-auto p-5 text-sm">
               {modal === "submit" && (
                 <>
                   <div className="overflow-x-auto">
                     <table className="w-full border border-gray-300 text-center text-xs">
-                      <thead className="bg-gray-100">
+                      <thead className="bg-exam-tint">
                         <tr>
                           <th className="border border-gray-300 px-2 py-2 text-left">Section</th>
                           <th className="border border-gray-300 px-2 py-2">No. of Questions</th>
@@ -631,10 +680,10 @@ export function MockExamEngine(props: Props) {
                       </thead>
                       <tbody>
                         {summaryRows.map(({ s, c }) => (
-                          <tr key={s.name} className={s.name === q.section ? "bg-[#eef3f8] font-semibold" : ""}>
+                          <tr key={s.name} className={s.name === q.section ? "bg-exam-tint/60 font-semibold" : ""}>
                             <td className="border border-gray-300 px-2 py-2 text-left">
                               {s.name}
-                              {s.state === "done" && <span className="text-gray-500 font-normal"> (submitted)</span>}
+                              {s.state === "done" && <span className="text-gray-600 font-normal"> (submitted)</span>}
                             </td>
                             <td className="border border-gray-300 px-2 py-2">{s.total}</td>
                             <td className="border border-gray-300 px-2 py-2">{c.answered}</td>
@@ -661,7 +710,7 @@ export function MockExamEngine(props: Props) {
                       <li key={i}>{line}</li>
                     ))}
                   </ol>
-                  <ul className="grid sm:grid-cols-2 gap-2">
+                  <ul className="grid sm:grid-cols-2 gap-2.5">
                     {legend.map((st, i) => (
                       <li key={st} className="flex items-center gap-2">
                         <PaletteSymbol status={st} label={i + 1} size="sm" />
@@ -676,7 +725,7 @@ export function MockExamEngine(props: Props) {
                   {questions.map((item) => (
                     <li key={item.id} className="border-b border-gray-200 pb-4">
                       <p className="font-bold mb-1">
-                        Q{item.number} <span className="font-normal text-gray-500">· {item.section}</span>
+                        Q{item.number} <span className="font-normal text-gray-600">· {item.section}</span>
                       </p>
                       <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(item.text) }} />
                     </li>
@@ -686,10 +735,10 @@ export function MockExamEngine(props: Props) {
             </div>
             {modal === "submit" && (
               <div className="flex-none flex justify-center gap-3 p-3 border-t border-gray-200">
-                <button onClick={submit} disabled={busy} className="px-8 py-2 rounded font-bold bg-[#3d9b35] text-white hover:bg-[#2f7d29] disabled:opacity-50">
+                <button onClick={submit} disabled={busy} className={`${primaryButton} px-10`}>
                   {busy ? "Submitting…" : "Yes"}
                 </button>
-                <button onClick={() => setModal(null)} disabled={busy} className="px-8 py-2 rounded font-bold border border-gray-400 bg-white hover:bg-gray-100">
+                <button onClick={() => setModal(null)} disabled={busy} className={`${barButton} px-10`}>
                   No
                 </button>
               </div>
@@ -699,7 +748,7 @@ export function MockExamEngine(props: Props) {
       )}
 
       {ending && (
-        <div className="fixed inset-0 z-[60] bg-white/80 flex items-center justify-center text-gray-800 font-semibold">
+        <div className="fixed inset-0 z-[60] bg-white/80 flex items-center justify-center text-gray-900 font-semibold">
           {sectional && !props.isLastSection ? "Opening the next section…" : "Submitting your test…"}
         </div>
       )}
