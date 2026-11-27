@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { createAttempt } from "@/server/attempts";
 import { getPattern } from "@/lib/exam-patterns";
-import { isPaperClosed } from "@/server/paper-expiry";
+import { isPaperClosed, isPaperUpcoming } from "@/server/paper-expiry";
 
 export async function startExamAction(formData: FormData) {
   const session = await getSession();
@@ -25,6 +25,10 @@ export async function startExamAction(formData: FormData) {
   });
   if (!paper) {
     throw new Error("Paper not found");
+  }
+  // A scheduled paper cannot be started before it opens (admins may preview it).
+  if (!isAdmin && isPaperUpcoming(paper)) {
+    redirect(paper.examPattern === "SURPRISE" ? "/surprise" : "/exams");
   }
   // Some papers (Surprise Test, CAT RC sets) are only taken as a timed mock.
   if (mode === "PRACTICE" && getPattern(paper.examPattern).mockOnly) {

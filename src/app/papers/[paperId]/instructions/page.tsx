@@ -7,7 +7,7 @@ import { getPattern, marksFor, patternInstructions, resolvePaperSections, sectio
 import { PALETTE_LABELS, PALETTE_ORDER, PaletteSymbol } from "@/components/exam/palette-symbol";
 import { SectionOrderPicker } from "@/components/exam/section-order-picker";
 import { themeForPaper } from "@/lib/exam-theme";
-import { isPaperExpired, isPaperClosed } from "@/server/paper-expiry";
+import { isPaperUpcoming, isPaperExpired, isPaperClosed } from "@/server/paper-expiry";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +33,8 @@ export default async function InstructionsPage({ params }: { params: Promise<{ p
   // A paper past its delete time is gone; a closed one shows its solutions instead of a start button.
   if (!isAdmin && isPaperExpired(paper)) return notFound();
   if (!isAdmin && isPaperClosed(paper)) redirect(`/papers/${paper.id}/solutions`);
+  // Not open yet: the Surprise Test tab shows the countdown.
+  if (!isAdmin && isPaperUpcoming(paper)) redirect(paper.examPattern === "SURPRISE" ? "/surprise" : "/exams");
 
   const running = await prisma.attempt.findFirst({
     where: { userId: session.userId as string, paperId: paper.id, status: "IN_PROGRESS" },

@@ -62,6 +62,18 @@ node scripts/surprise/push-paper.mjs ../EXAM-SYSTEM/.surprise-papers/<file>.json
 - Live loads only insert a new paper, so no backup is needed. The script reads back the stored keys.
 - `--replace` swaps a paper with the same title only if nobody has attempted it yet. To pull a live paper, an admin can hide it in Admin → Papers.
 
+## 5b. Scheduling the release
+
+To release a paper at a set time instead of at once, add `--opens-at "YYYY-MM-DD HH:MM"` (India time) to the live
+push, or schedule a paper that is already loaded:
+
+```
+node scripts/surprise/push-paper.mjs --schedule "Surprise Test 3" --db live --opens-at "2026-11-29 09:30" --publish
+```
+
+Until then the Surprise tab and the exams-page banner show a live countdown, the card says "Not open yet", and the
+paper cannot be started. Students are notified when it opens. `--opens-at now` opens it straight away.
+
 ## 6. Closing an old paper
 
 If the user wants an earlier paper retired (often when a new one goes out):
@@ -72,7 +84,7 @@ node scripts/surprise/push-paper.mjs --close "Surprise Test 1" --db live --delet
 
 Closed papers take no new attempts (a test already running may finish), show "Closed · View solutions" in the tab,
 and their solutions open to every student at `/papers/<id>/solutions`. With `--delete-after`, the paper and all its
-attempts are deleted automatically at that time (`src/server/paper-expiry.ts`; runs within about a minute). Back up the
+attempts are deleted automatically at that time (running `--close` again restarts the timer) (`src/server/paper-expiry.ts`; runs within about a minute). Back up the
 paper's attempts first if anyone has taken it (`.db-backups/`), since the deletion cannot be undone.
 
 ## 7. Report

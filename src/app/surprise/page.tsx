@@ -6,7 +6,8 @@ import { Check, Clock, ListChecks, Sparkles } from "lucide-react";
 import { SiteHeader } from "@/components/site/site-header";
 import { getPattern } from "@/lib/exam-patterns";
 import { SURPRISE_EXAM_SLUG, SURPRISE_PATTERN } from "@/lib/surprise";
-import { isPaperClosed, notExpired, purgeExpiredPapers, timeLeft } from "@/server/paper-expiry";
+import { formatOpening, isPaperClosed, isPaperUpcoming, notExpired, purgeExpiredPapers } from "@/server/paper-expiry";
+import { Countdown } from "@/components/site/countdown";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function SurprisePage() {
       isActive: true,
       createdAt: true,
       closedAt: true,
+      opensAt: true,
       deleteAt: true,
       attempts: {
         where: { userId },
@@ -47,6 +49,10 @@ export default async function SurprisePage() {
   const maxMarks = (p: { totalQuestions: number }) => p.totalQuestions * pattern.marks.correct;
   // "New" goes on the newest paper that can still be taken.
   const newestId = papers.find((p) => p.isActive && !isPaperClosed(p))?.id;
+  // The next scheduled paper (soonest opening), shown with a big countdown at the top.
+  const upcoming = papers
+    .filter((p) => p.isActive && isPaperUpcoming(p))
+    .sort((a, b) => a.opensAt!.getTime() - b.opensAt!.getTime())[0];
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -70,6 +76,16 @@ export default async function SurprisePage() {
               Marks <strong className="font-semibold">+{pattern.marks.correct}</strong> / <strong className="font-semibold">{pattern.marks.incorrect}</strong>
             </li>
           </ul>
+          {upcoming?.opensAt && (
+            <div className="mt-7 pt-6 border-t border-white/15">
+              <p suppressHydrationWarning className="text-sm text-exam-on-dark">
+                <strong className="text-white">{upcoming.title}</strong> opens on {formatOpening(upcoming.opensAt)}. It unlocks in
+              </p>
+              <div className="mt-3">
+                <Countdown target={upcoming.opensAt.toISOString()} size="lg" />
+              </div>
+            </div>
+          )}
         </section>
 
         {papers.length === 0 ? (
@@ -87,6 +103,7 @@ export default async function SurprisePage() {
               const running = paper.attempts.find((a) => a.status === "IN_PROGRESS");
               const finished = paper.attempts.find((a) => a.status !== "IN_PROGRESS");
               const closed = isPaperClosed(paper);
+              const notYet = isPaperUpcoming(paper);
               const isNew = paper.id === newestId && !finished;
               const primary = "inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-4 h-10 text-sm font-semibold";
               const secondary = "inline-flex items-center justify-center border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded-lg px-4 h-10 text-sm font-semibold";
@@ -125,9 +142,18 @@ export default async function SurprisePage() {
                       </p>
                     )}
                     {closed && (
-                      <p suppressHydrationWarning className="text-sm text-gray-600 mt-1">
-                        This test can no longer be taken; anyone can read its solutions
-                        {paper.deleteAt ? ` until it is removed in ${timeLeft(paper.deleteAt)}` : ""}.
+                      <p className="text-sm text-gray-600 mt-1">
+                        This test can no longer be taken; anyone can read its solutions.
+                        {paper.deleteAt && (
+                          <>
+                            {" "}It disappears in <Countdown target={paper.deleteAt.toISOString()} />.
+                          </>
+                        )}
+                      </p>
+                    )}
+                    {notYet && paper.opensAt && (
+                      <p suppressHydrationWarning className="text-sm text-gray-900 mt-1">
+                        Opens {formatOpening(paper.opensAt)} · in <Countdown target={paper.opensAt.toISOString()} />
                       </p>
                     )}
                     {!finished && !closed && paper.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{paper.description}</p>}
@@ -146,6 +172,13 @@ export default async function SurprisePage() {
                           Solutions
                         </Link>
                       </>
+                    ) : notYet ? (
+                      <span
+                        aria-disabled="true"
+                        className="inline-flex items-center justify-center gap-1.5 bg-gray-100 text-gray-600 border border-gray-200 rounded-lg px-4 h-10 text-sm font-semibold cursor-not-allowed"
+                      >
+                        <Clock className="w-4 h-4" aria-hidden /> Not open yet
+                      </span>
                     ) : closed ? (
                       <Link href={`/papers/${paper.id}/solutions`} className={primary}>
                         View solutions

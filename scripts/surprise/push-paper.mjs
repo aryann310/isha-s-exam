@@ -9,6 +9,9 @@
 //   node scripts/surprise/push-paper.mjs --close "Surprise Test 1" --db live --delete-after 24h
 //                                         stop new attempts, open its solutions to all, delete it in 24 h
 //
+//   node scripts/surprise/push-paper.mjs --schedule "Surprise Test 2" --db live --opens-at "2026-11-28 09:30" --publish
+//                                         students see a countdown and can start it from that time (India time)
+//
 // Options: --publish (visible to students; default hidden), --replace (replace a paper with the same title
 // that nobody has attempted yet).
 
@@ -126,7 +129,17 @@ function databaseUrl(target) {
   return url;
 }
 
-async function push(paper, { target, publish, replace }) {
+/** "2026-11-28 09:30" (India time) or a full ISO time -> Date. */
+function parseOpening(raw) {
+  if (!raw) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})$/.exec(raw.trim());
+  const d = m ? new Date(`${m[1]}T${m[2].padStart(2, "0")}:${m[3]}:00+05:30`) : new Date(raw);
+  if (Number.isNaN(d.getTime())) throw new Error(`--opens-at: can't read "${raw}" (use "YYYY-MM-DD HH:MM", India time)`);
+  return d;
+}
+const ist = (d) => d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
+
+async function push(paper, { target, publish, replace, opensAt }) {
   const { PrismaClient } = require("@prisma/client");
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(target) } } });
   try {
@@ -163,6 +176,7 @@ async function push(paper, { target, publish, replace }) {
             durationSeconds: DURATION_SECONDS,
             totalQuestions: questions.length,
             isActive: !!publish,
+            opensAt: opensAt ?? null,
             correctMarks: MARKS.correct,
             incorrectMarks: MARKS.incorrect,
             unattemptedMarks: 0,
@@ -193,7 +207,7 @@ async function push(paper, { target, publish, replace }) {
     const stored = await prisma.question.findMany({ where: { paperId: result.id }, orderBy: { questionNumber: "asc" }, select: { questionNumber: true, correctAnswer: true, section: true } });
     const keyOk = stored.length === questions.length && stored.every((s, i) => s.correctAnswer === questions[i].answer && s.section === questions[i].section);
     if (!keyOk) throw new Error("Read-back mismatch: stored questions differ from the file.");
-    return { paperId: result.id, questions: stored.length, published: !!publish };
+    return { paperId: result.id, questions: stored.length, published: !!publish, opensAt };
   } finally {
     await prisma.$disconnect();
   }
@@ -211,12 +225,14 @@ async function list(target) {
     const papers = await prisma.paper.findMany({
       where: { exam: { slug: EXAM.slug } },
       orderBy: { createdAt: "asc" },
-      select: { id: true, title: true, isActive: true, createdAt: true, closedAt: true, deleteAt: true, _count: { select: { questions: true, attempts: true } } },
+      select: { id: true, title: true, isActive: true, createdAt: true, closedAt: true, deleteAt: true, opensAt: true, _count: { select: { questions: true, attempts: true } } },
     });
     if (!papers.length) console.log(`No surprise papers in ${target.toUpperCase()} yet.`);
     for (const p of papers) {
-      const state = p.closedAt ? `closed${p.deleteAt ? `, deletes ${p.deleteAt.toISOString().slice(0, 16)}Z` : ""}` : p.isActive ? "published" : "hidden";
-      console.log(`${p.title.padEnd(24)} ${state.padEnd(36)} ${p._count.questions} Q  ${p._count.attempts} attempts  ${p.createdAt.toISOString().slice(0, 10)}  ${p.id}`);
+      const state = p.closedAt
+        ? `closed${p.deleteAt ? `, deletes ${ist(p.deleteAt)}` : ""}`
+        : `${p.isActive ? "published" : "hidden"}${p.opensAt && p.opensAt > new Date() ? `, opens ${ist(p.opensAt)}` : ""}`;
+      console.log(`${p.title.padEnd(24)} ${state.padEnd(44)} ${p._count.questions} Q  ${p._count.attempts} attempts  ${p.createdAt.toISOString().slice(0, 10)}  ${p.id}`);
     }
   } finally {
     await prisma.$disconnect();
@@ -247,8 +263,34 @@ async function close(target, title, deleteAfterHours) {
   }
 }
 
+/** Sets when an existing paper opens ("now" clears it); --publish also makes it visible. */
+async function schedule(target, title, opensAt, publish) {
+  const { PrismaClient } = require("@prisma/client");
+  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(target) } } });
+  try {
+    const paper = await prisma.paper.findFirst({ where: { exam: { slug: EXAM.slug }, title }, select: { id: true, _count: { select: { attempts: true } } } });
+    if (!paper) throw new Error(`No surprise paper titled "${title}" in ${target.toUpperCase()}.`);
+    if (paper._count.attempts > 0 && opensAt && opensAt > new Date()) throw new Error(`"${title}" already has attempts; it cannot be moved to a later opening.`);
+    // announcedAt is cleared so students are told when it opens.
+    await prisma.paper.update({ where: { id: paper.id }, data: { opensAt, ...(publish ? { isActive: true } : {}), announcedAt: null } });
+    console.log(`"${title}" in ${target.toUpperCase()}: ${opensAt && opensAt > new Date() ? `opens at ${ist(opensAt)} IST (countdown shown until then)` : "open now"}${publish ? ", published" : ""}.`);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
+  if (args.includes("--schedule")) {
+    const target = args.includes("--db") ? args[args.indexOf("--db") + 1] : null;
+    const title = args[args.indexOf("--schedule") + 1];
+    const raw = args.includes("--opens-at") ? args[args.indexOf("--opens-at") + 1] : null;
+    if (!target || !title || title.startsWith("--") || !raw) {
+      console.error('Usage: node scripts/surprise/push-paper.mjs --schedule "<title>" --db test|live --opens-at "YYYY-MM-DD HH:MM" [--publish]');
+      process.exit(2);
+    }
+    return schedule(target, title, raw === "now" ? null : parseOpening(raw), args.includes("--publish"));
+  }
   if (args.includes("--close")) {
     const target = args.includes("--db") ? args[args.indexOf("--db") + 1] : null;
     const title = args[args.indexOf("--close") + 1];
@@ -288,8 +330,10 @@ async function main() {
   console.log(`    answer keys:  ${tally("answer", ["A", "B", "C", "D", "E"])}`);
   if (flag("check")) return;
 
-  const res = await push(paper, { target, publish: flag("publish"), replace: flag("replace") });
+  const opensAt = parseOpening(args.includes("--opens-at") ? args[args.indexOf("--opens-at") + 1] : null);
+  const res = await push(paper, { target, publish: flag("publish"), replace: flag("replace"), opensAt });
   console.log(`\nLoaded to ${target.toUpperCase()}: paper ${res.paperId}, ${res.questions} questions, ${res.published ? "PUBLISHED (in the Surprise Test tab)" : "hidden (add --publish to show students)"}.`);
+  if (res.opensAt) console.log(`Opens to students at ${ist(res.opensAt)} IST; until then the tab shows a countdown.`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

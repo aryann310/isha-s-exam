@@ -7,7 +7,8 @@ import { ExamBadge } from "@/components/site/exam-badge";
 import { themeForExam, themeForPaper } from "@/lib/exam-theme";
 import { SURPRISE_EXAM_SLUG } from "@/lib/surprise";
 import { Sparkles } from "lucide-react";
-import { notExpired, purgeExpiredPapers } from "@/server/paper-expiry";
+import { isPaperUpcoming, notExpired, purgeExpiredPapers } from "@/server/paper-expiry";
+import { Countdown } from "@/components/site/countdown";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function ExamsPage() {
       include: {
         papers: {
           where: { isActive: true, ...notExpired() },
-          select: { id: true, examPattern: true },
+          select: { id: true, examPattern: true, opensAt: true },
         },
       },
       orderBy: { name: "asc" },
@@ -42,6 +43,9 @@ export default async function ExamsPage() {
   // Students only see exams that have at least one published paper.
   // The Surprise Test has its own tab, so it is left out of the exam grid.
   const surprise = allExams.find((e) => e.slug === SURPRISE_EXAM_SLUG);
+  const nextSurprise = surprise?.papers
+    .filter((p) => isPaperUpcoming(p))
+    .sort((a, b) => a.opensAt!.getTime() - b.opensAt!.getTime())[0];
   const exams = (isAdmin ? allExams : allExams.filter((e) => e.papers.length > 0)).filter((e) => e.slug !== SURPRISE_EXAM_SLUG);
   const name = (session.username as string) || (session.name as string) || "Student";
 
@@ -70,6 +74,11 @@ export default async function ExamsPage() {
                 <span className="block text-sm text-exam-on-dark mt-0.5">
                   30 mixed questions from CAT, CMAT, SNAP and NMAT · 60 minutes · solutions right after you submit
                 </span>
+                {nextSurprise?.opensAt && (
+                  <span className="block text-sm text-white mt-1.5">
+                    Next surprise test opens in <Countdown target={nextSurprise.opensAt.toISOString()} />
+                  </span>
+                )}
               </span>
             </span>
             <span className="shrink-0 inline-flex items-center justify-center bg-white text-exam-dark font-semibold text-sm px-4 h-10 rounded-lg group-hover:bg-exam-tint">
