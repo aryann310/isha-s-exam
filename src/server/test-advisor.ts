@@ -36,6 +36,8 @@ How to read the activity in the record:
 Style: simple, warm, direct English, speaking to the student as "you" (many students are not native speakers). Short paragraphs and lists. When you explain a question: what they chose and why it does not work, the key idea, the steps from the official solution, and how to spot this type of question next time.`;
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
+/** Marks keep two decimals: negative marks like -0.25 must not be rounded to -0.3. */
+const r2 = (n: number) => Math.round(n * 100) / 100;
 const fmtTime = (sec: number) => (sec >= 60 ? `${Math.floor(sec / 60)}m ${Math.round(sec % 60)}s` : `${Math.round(sec)}s`);
 // Images (often embedded as base64 data) are not sent: they would be long unreadable text. The advisor is told
 // figures are not shown and to rely on the official solution for those questions.
@@ -236,7 +238,7 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
     `# TEST RECORD`,
     `Test: ${p.title} (${p.exam.name}, ${kind}), finished ${(attempt.submittedAt ?? attempt.startedAt).toISOString().slice(0, 10)}${attempt.status === "AUTO_SUBMITTED" ? " (submitted automatically when time ran out)" : ""}.`,
     `Rules: ${Math.round(p.durationSeconds / 60)} minutes in total; ${pattern.label} pattern; ${pattern.timing === "sectional" ? "each section has its own time" : "one clock for the whole paper"}; ${pattern.navigation === "linear" ? "one-way (no going back)" : "free movement between questions"}. Marks: correct +${p.correctMarks}, wrong ${p.incorrectMarks}, skipped ${p.unattemptedMarks} (some sections or typed-answer questions may differ, see each question).`,
-    `Result: ${r1(score)} of ${r1(maxMarks)} marks (${maxMarks ? Math.round((score / maxMarks) * 100) : 0}%). Correct ${correct}, wrong ${wrong}, skipped ${skipped} of ${questions.length}. Accuracy ${attemptedN ? Math.round((correct / attemptedN) * 100) : 0}% of attempted.`,
+    `Result: ${r2(score)} of ${r2(maxMarks)} marks (${maxMarks ? Math.round((score / maxMarks) * 100) : 0}%). Correct ${correct}, wrong ${wrong}, skipped ${skipped} of ${questions.length}. Accuracy ${attemptedN ? Math.round((correct / attemptedN) * 100) : 0}% of attempted.`,
   ];
   if (facts.hasActivity) {
     head.push(
@@ -250,7 +252,7 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
   }
   head.push(
     `By section (in the order taken):\n${[...perSection.entries()]
-      .map(([name, s]) => `- ${name}: ${s.attempted}/${s.total} attempted, ${s.correct} right, ${s.wrong} wrong, ${r1(s.marks)} marks${facts.hasActivity ? `, time on its questions ${fmtTime(s.time)}${s.allowed ? ` of ${fmtTime(s.allowed)} allowed` : ""}` : ""}`)
+      .map(([name, s]) => `- ${name}: ${s.attempted}/${s.total} attempted, ${s.correct} right, ${s.wrong} wrong, ${r2(s.marks)} marks${facts.hasActivity ? `, time on its questions ${fmtTime(s.time)}${s.allowed ? ` of ${fmtTime(s.allowed)} allowed` : ""}` : ""}`)
       .join("\n")}`
   );
 
