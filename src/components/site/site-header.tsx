@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { logoutAction } from "@/server/actions/auth";
 import { SiteNav } from "@/components/site/site-nav";
+import { NotificationBell } from "@/components/site/notification-bell";
 
 /** Header for the student pages (main theme). */
 export function SiteHeader({ name, isAdmin, back }: { name: string; isAdmin: boolean; back?: { href: string; label: string } }) {
@@ -22,6 +23,7 @@ export function SiteHeader({ name, isAdmin, back }: { name: string; isAdmin: boo
           )}
         </div>
         <div className="flex items-center gap-3 text-sm">
+          <NotificationBell />
           {isAdmin && (
             <Link href="/admin" className="font-semibold text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg">
               Admin

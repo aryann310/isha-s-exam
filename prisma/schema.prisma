@@ -26,6 +26,10 @@ model User {
   // AI advisor chat: messages allowed per day (admins raise it on request), and when the student last asked.
   advisorDailyLimit       Int       @default(40)
   advisorLimitRequestedAt DateTime?
+
+  // Notifications: everything sent before this moment counts as read (set when the student opens the bell).
+  notificationsSeenAt     DateTime?
+  notificationTargets     NotificationRecipient[]
 }
 
 model Exam {
@@ -57,12 +61,15 @@ model Paper {
   // Marks for typed-answer (TITA) questions; null = same as correctMarks
   titaCorrectMarks    Float?
   titaIncorrectMarks  Float      @default(0.0)
+  // When students were told this paper is out (a PAPER notification). Null = not announced yet.
+  announcedAt         DateTime?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
   exam                Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
   questions           Question[]
   attempts            Attempt[]
+  notification        Notification?
 }
 
 model Question {
@@ -206,4 +213,34 @@ model CoachMessage {
   @@index([attemptId, createdAt])
   @@index([userId, createdAt])
   @@index([reported])
+}
+
+/// A message in the students' bell. PAPER ones are sent automatically when a paper goes live (one per paper);
+/// CUSTOM ones are written by an admin. Audience ALL = every student; SELECTED = the NotificationRecipient rows.
+model Notification {
+  id        String   @id @default(cuid())
+  kind      String // PAPER | CUSTOM
+  title     String
+  body      String
+  link      String? // a path in the portal ("/papers/…") or an https:// address
+  paperId   String?  @unique
+  audience  String   @default("ALL") // ALL | SELECTED
+  createdBy String? // admin's name, for CUSTOM
+  createdAt DateTime @default(now())
+
+  paper      Paper?                  @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  recipients NotificationRecipient[]
+
+  @@index([createdAt])
+}
+
+model NotificationRecipient {
+  notificationId String
+  userId         String
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([notificationId, userId])
+  @@index([userId])
 }
