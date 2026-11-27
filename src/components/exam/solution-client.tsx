@@ -15,9 +15,11 @@ interface SolutionClientProps {
   answers: AttemptAnswer[];
   /** Answers given after the test in the untimed phase (not scored). */
   untimedAnswers?: Array<{ questionId: string; selectedAnswer: string }>;
+  /** Reading a closed paper without having taken it: no answers, filters or right/wrong labels. */
+  viewOnly?: boolean;
 }
 
-export function SolutionClient({ questions, answers, untimedAnswers = [] }: SolutionClientProps) {
+export function SolutionClient({ questions, answers, untimedAnswers = [], viewOnly = false }: SolutionClientProps) {
   const [filter, setFilter] = useState<FilterType>("ALL");
 
   const getQuestionStatus = (questionId: string) => {
@@ -34,7 +36,7 @@ export function SolutionClient({ questions, answers, untimedAnswers = [] }: Solu
 
   return (
     <div>
-      <div role="group" aria-label="Show questions" className="flex flex-wrap gap-1 mb-6 bg-white p-1.5 rounded-xl border border-gray-200 sticky top-2 z-10 w-fit">
+      <div role="group" aria-label="Show questions" hidden={viewOnly} className="flex flex-wrap gap-1 mb-6 bg-white p-1.5 rounded-xl border border-gray-200 sticky top-2 z-10 w-fit">
         {(["ALL", "CORRECT", "INCORRECT", "UNATTEMPTED"] as FilterType[]).map((f) => (
           <button
             key={f}
@@ -81,9 +83,9 @@ export function SolutionClient({ questions, answers, untimedAnswers = [] }: Solu
                       <span className="text-xs font-medium text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded">{q.difficulty}</span>
                     )}
                   </div>
-                  {status === "CORRECT" && <span className="text-st-answered font-bold text-sm">Correct</span>}
-                  {status === "INCORRECT" && <span className="text-st-not-answered font-bold text-sm">Wrong</span>}
-                  {status === "UNATTEMPTED" && <span className="text-gray-600 font-bold text-sm">Skipped</span>}
+                  {!viewOnly && status === "CORRECT" && <span className="text-st-answered font-bold text-sm">Correct</span>}
+                  {!viewOnly && status === "INCORRECT" && <span className="text-st-not-answered font-bold text-sm">Wrong</span>}
+                  {!viewOnly && status === "UNATTEMPTED" && <span className="text-gray-600 font-bold text-sm">Skipped</span>}
                 </div>
 
                 <div className="p-6">
@@ -100,7 +102,7 @@ export function SolutionClient({ questions, answers, untimedAnswers = [] }: Solu
 
                   {q.questionType === "TITA" && (
                     <div className="grid sm:grid-cols-2 gap-3 mb-8 text-sm">
-                      <div className={`p-4 rounded-xl border-2 ${status === "CORRECT" ? "border-emerald-500 bg-emerald-50" : status === "INCORRECT" ? "border-rose-500 bg-rose-50" : "border-gray-200"}`}>
+                      <div hidden={viewOnly} className={`p-4 rounded-xl border-2 ${status === "CORRECT" ? "border-emerald-500 bg-emerald-50" : status === "INCORRECT" ? "border-rose-500 bg-rose-50" : "border-gray-200"}`}>
                         <p className="text-sm font-medium text-gray-600 mb-1">Your answer</p>
                         <p className="font-mono text-lg">{selectedAnswer || "—"}</p>
                       </div>

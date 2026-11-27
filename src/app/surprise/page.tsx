@@ -6,6 +6,7 @@ import { Check, Clock, ListChecks, Sparkles } from "lucide-react";
 import { SiteHeader } from "@/components/site/site-header";
 import { getPattern } from "@/lib/exam-patterns";
 import { SURPRISE_EXAM_SLUG, SURPRISE_PATTERN } from "@/lib/surprise";
+import { isPaperClosed, notExpired, purgeExpiredPapers, timeLeft } from "@/server/paper-expiry";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +18,13 @@ export default async function SurprisePage() {
   const userId = session.userId as string;
   const name = (session.username as string) || (session.name as string) || "Student";
   const pattern = getPattern(SURPRISE_PATTERN);
+  await purgeExpiredPapers();
 
   const papers = await prisma.paper.findMany({
     where: {
       exam: { slug: SURPRISE_EXAM_SLUG, ...(isAdmin ? {} : { isActive: true }) },
       ...(isAdmin ? {} : { isActive: true }),
+      ...notExpired(),
     },
     orderBy: { createdAt: "desc" },
     select: {
@@ -32,6 +35,8 @@ export default async function SurprisePage() {
       durationSeconds: true,
       isActive: true,
       createdAt: true,
+      closedAt: true,
+      deleteAt: true,
       attempts: {
         where: { userId },
         orderBy: { startedAt: "desc" },
@@ -40,7 +45,8 @@ export default async function SurprisePage() {
     },
   });
   const maxMarks = (p: { totalQuestions: number }) => p.totalQuestions * pattern.marks.correct;
-  const newestId = papers.find((p) => p.isActive)?.id;
+  // "New" goes on the newest paper that can still be taken.
+  const newestId = papers.find((p) => p.isActive && !isPaperClosed(p))?.id;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -80,24 +86,27 @@ export default async function SurprisePage() {
             {papers.map((paper) => {
               const running = paper.attempts.find((a) => a.status === "IN_PROGRESS");
               const finished = paper.attempts.find((a) => a.status !== "IN_PROGRESS");
+              const closed = isPaperClosed(paper);
+              const isNew = paper.id === newestId && !finished;
+              const primary = "inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-4 h-10 text-sm font-semibold";
+              const secondary = "inline-flex items-center justify-center border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded-lg px-4 h-10 text-sm font-semibold";
               return (
                 <div
                   key={paper.id}
                   className={`bg-white border rounded-2xl px-5 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
-                    paper.id === newestId && !finished ? "border-exam-primary border-2" : "border-gray-200"
+                    isNew ? "border-exam-primary border-2" : "border-gray-200"
                   }`}
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold text-gray-900">{paper.title}</h3>
-                      {paper.id === newestId && !finished && (
-                        <span className="text-xs font-bold uppercase tracking-wide bg-exam-primary text-white px-2 py-0.5 rounded">New</span>
-                      )}
+                      {isNew && <span className="text-xs font-bold uppercase tracking-wide bg-exam-primary text-white px-2 py-0.5 rounded">New</span>}
                       {finished && (
                         <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide bg-st-answered text-white px-2 py-0.5 rounded">
                           <Check className="w-3 h-3" aria-hidden /> Done
                         </span>
                       )}
+                      {closed && <span className="text-xs font-bold uppercase tracking-wide bg-gray-200 text-gray-800 px-2 py-0.5 rounded">Closed</span>}
                       {!paper.isActive && (
                         <span className="text-xs font-semibold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">Hidden from students</span>
                       )}
@@ -115,36 +124,34 @@ export default async function SurprisePage() {
                         </span>
                       </p>
                     )}
-                    {!finished && paper.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{paper.description}</p>}
+                    {closed && (
+                      <p suppressHydrationWarning className="text-sm text-gray-600 mt-1">
+                        This test can no longer be taken; anyone can read its solutions
+                        {paper.deleteAt ? ` until it is removed in ${timeLeft(paper.deleteAt)}` : ""}.
+                      </p>
+                    )}
+                    {!finished && !closed && paper.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{paper.description}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2 shrink-0">
                     {running ? (
-                      <Link
-                        href={`/exam/${running.id}`}
-                        className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-5 h-10 text-sm font-semibold"
-                      >
+                      <Link href={`/exam/${running.id}`} className={primary}>
                         Resume test &rarr;
                       </Link>
                     ) : finished ? (
                       <>
-                        <Link
-                          href={`/results/${finished.id}`}
-                          className="inline-flex items-center justify-center border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded-lg px-4 h-10 text-sm font-semibold"
-                        >
+                        <Link href={`/results/${finished.id}`} className={secondary}>
                           Result
                         </Link>
-                        <Link
-                          href={`/solutions/${finished.id}`}
-                          className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-4 h-10 text-sm font-semibold"
-                        >
+                        <Link href={`/solutions/${finished.id}`} className={primary}>
                           Solutions
                         </Link>
                       </>
+                    ) : closed ? (
+                      <Link href={`/papers/${paper.id}/solutions`} className={primary}>
+                        View solutions
+                      </Link>
                     ) : (
-                      <Link
-                        href={`/papers/${paper.id}/instructions`}
-                        className="inline-flex items-center justify-center bg-exam-primary hover:bg-exam-primary-hover text-white rounded-lg px-5 h-10 text-sm font-semibold"
-                      >
+                      <Link href={`/papers/${paper.id}/instructions`} className={primary}>
                         Start test &rarr;
                       </Link>
                     )}

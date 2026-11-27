@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { createAttempt } from "@/server/attempts";
 import { getPattern } from "@/lib/exam-patterns";
+import { isPaperClosed } from "@/server/paper-expiry";
 
 export async function startExamAction(formData: FormData) {
   const session = await getSession();
@@ -56,9 +57,12 @@ export async function startExamAction(formData: FormData) {
       select: { id: true },
     });
     if (existing) return existing.id;
+    if (isPaperClosed(paper)) return null;
     const created = await createAttempt({ userId, paper, mode, sectionOrder: sectionOrder.length ? sectionOrder : null }, tx);
     return created.id;
   }, { timeout: 20_000, maxWait: 10_000 });
 
+  // A closed paper takes no new attempts; its solutions are open instead.
+  if (!attemptId) redirect(`/papers/${paper.id}/solutions`);
   redirect(`/exam/${attemptId}`);
 }

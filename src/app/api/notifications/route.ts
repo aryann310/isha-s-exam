@@ -2,6 +2,7 @@
 // live), POST = mark them all read.
 import { getSession } from "@/lib/auth/session";
 import { announceNewPapers, getFeed, markFeedSeen } from "@/server/notifications";
+import { purgeExpiredPapers } from "@/server/paper-expiry";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ const noStore = { "Cache-Control": "no-store" };
 export async function GET() {
   const session = await getSession();
   if (!session) return Response.json({ error: "Please sign in again." }, { status: 401, headers: noStore });
+  await purgeExpiredPapers();
   try {
     await announceNewPapers();
   } catch (err) {

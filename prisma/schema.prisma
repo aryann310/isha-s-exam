@@ -63,6 +63,10 @@ model Paper {
   titaIncorrectMarks  Float      @default(0.0)
   // When students were told this paper is out (a PAPER notification). Null = not announced yet.
   announcedAt         DateTime?
+  // Closed papers take no new attempts, and every student may read their solutions (e.g. an old Surprise Test).
+  closedAt            DateTime?
+  // The paper, with its questions and every attempt, is deleted automatically after this time.
+  deleteAt            DateTime?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 

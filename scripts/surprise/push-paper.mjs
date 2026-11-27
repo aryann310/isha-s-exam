@@ -6,6 +6,8 @@
 //   node scripts/surprise/push-paper.mjs <paper.json> --db test           load to the Neon test branch (.env.development.local)
 //   node scripts/surprise/push-paper.mjs <paper.json> --db live --publish load to production and show it to students
 //   node scripts/surprise/push-paper.mjs --list --db live                  list the surprise papers already loaded
+//   node scripts/surprise/push-paper.mjs --close "Surprise Test 1" --db live --delete-after 24h
+//                                         stop new attempts, open its solutions to all, delete it in 24 h
 //
 // Options: --publish (visible to students; default hidden), --replace (replace a paper with the same title
 // that nobody has attempted yet).
@@ -209,12 +211,37 @@ async function list(target) {
     const papers = await prisma.paper.findMany({
       where: { exam: { slug: EXAM.slug } },
       orderBy: { createdAt: "asc" },
-      select: { id: true, title: true, isActive: true, createdAt: true, _count: { select: { questions: true, attempts: true } } },
+      select: { id: true, title: true, isActive: true, createdAt: true, closedAt: true, deleteAt: true, _count: { select: { questions: true, attempts: true } } },
     });
     if (!papers.length) console.log(`No surprise papers in ${target.toUpperCase()} yet.`);
     for (const p of papers) {
-      console.log(`${p.title.padEnd(24)} ${p.isActive ? "published" : "hidden   "}  ${p._count.questions} Q  ${p._count.attempts} attempts  ${p.createdAt.toISOString().slice(0, 10)}  ${p.id}`);
+      const state = p.closedAt ? `closed${p.deleteAt ? `, deletes ${p.deleteAt.toISOString().slice(0, 16)}Z` : ""}` : p.isActive ? "published" : "hidden";
+      console.log(`${p.title.padEnd(24)} ${state.padEnd(36)} ${p._count.questions} Q  ${p._count.attempts} attempts  ${p.createdAt.toISOString().slice(0, 10)}  ${p.id}`);
     }
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+/**
+ * Closes a surprise paper: no new attempts from now, its solutions open to every student, and (with a delete
+ * time) the whole paper and its attempts are deleted automatically after that many hours.
+ */
+async function close(target, title, deleteAfterHours) {
+  const { PrismaClient } = require("@prisma/client");
+  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(target) } } });
+  try {
+    const paper = await prisma.paper.findFirst({
+      where: { exam: { slug: EXAM.slug }, title },
+      select: { id: true, title: true, closedAt: true, _count: { select: { attempts: true } } },
+    });
+    if (!paper) throw new Error(`No surprise paper titled "${title}" in ${target.toUpperCase()}.`);
+    const running = await prisma.attempt.count({ where: { paperId: paper.id, status: "IN_PROGRESS" } });
+    const now = new Date();
+    const deleteAt = deleteAfterHours ? new Date(now.getTime() + deleteAfterHours * 3600_000) : null;
+    await prisma.paper.update({ where: { id: paper.id }, data: { closedAt: paper.closedAt ?? now, deleteAt } });
+    console.log(`Closed "${paper.title}" in ${target.toUpperCase()} (${paper._count.attempts} attempts, ${running} still running and allowed to finish).`);
+    console.log(deleteAt ? `It will be deleted with all its attempts at ${deleteAt.toISOString()} (${deleteAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST).` : "No delete time set.");
   } finally {
     await prisma.$disconnect();
   }
@@ -222,6 +249,16 @@ async function list(target) {
 
 async function main() {
   const args = process.argv.slice(2);
+  if (args.includes("--close")) {
+    const target = args.includes("--db") ? args[args.indexOf("--db") + 1] : null;
+    const title = args[args.indexOf("--close") + 1];
+    const hours = args.includes("--delete-after") ? Number(String(args[args.indexOf("--delete-after") + 1]).replace(/h$/i, "")) : null;
+    if (!target || !title || title.startsWith("--") || (hours !== null && !(hours > 0))) {
+      console.error('Usage: node scripts/surprise/push-paper.mjs --close "<title>" --db test|live [--delete-after 24h]');
+      process.exit(2);
+    }
+    return close(target, title, hours);
+  }
   if (args.includes("--list")) {
     const target = args.includes("--db") ? args[args.indexOf("--db") + 1] : "live";
     return list(target);
