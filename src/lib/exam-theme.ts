@@ -3,7 +3,7 @@
 
 export type ExamTheme = "main" | "cat" | "nmat" | "snap" | "cmat" | "surprise";
 
-const BY_PATTERN: Record<string, ExamTheme> = { CAT: "cat", NMAT: "nmat", SNAP: "snap", CMAT: "cmat", SURPRISE: "surprise" };
+const BY_PATTERN: Record<string, ExamTheme> = { CAT: "cat", CAT_RC: "cat", NMAT: "nmat", SNAP: "snap", CMAT: "cmat", SURPRISE: "surprise" };
 
 /** Theme for a paper, from its exam pattern; CUSTOM papers fall back to the exam's name. */
 export function themeForPaper(paper: { examPattern?: string | null }, examName?: string | null): ExamTheme {

@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { hasSectionMarks } from "@/lib/exam-patterns";
+import { getPattern, hasSectionMarks } from "@/lib/exam-patterns";
 import { themeForExam } from "@/lib/exam-theme";
 import { paperProgress } from "@/server/untimed";
 import { SURPRISE_EXAM_SLUG } from "@/lib/surprise";
@@ -13,8 +13,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ExamPapersPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -41,6 +43,19 @@ export default async function ExamPapersPage({
   const theme = themeForExam(exam);
   const name = (session.username as string) || (session.name as string) || "Student";
 
+  // Papers whose pattern has its own tab (e.g. CAT Reading Comprehension sets) are listed apart from the full papers.
+  const tabOf = (p: { examPattern: string }) => getPattern(p.examPattern).tab ?? null;
+  const extraTabs = [...new Map(exam.papers.map(tabOf).filter((t) => t !== null).map((t) => [t.key, t])).values()];
+  const { tab: tabParam } = await searchParams;
+  const activeTab = extraTabs.find((t) => t.key === tabParam) ?? null;
+  const papers = exam.papers.filter((p) => (tabOf(p)?.key ?? null) === (activeTab?.key ?? null));
+  const tabs = extraTabs.length
+    ? [
+        { key: null as string | null, label: "Full papers", count: exam.papers.filter((p) => !tabOf(p)).length },
+        ...extraTabs.map((t) => ({ key: t.key as string | null, label: t.label, count: exam.papers.filter((p) => tabOf(p)?.key === t.key).length })),
+      ]
+    : [];
+
   // This student's progress per paper: DONE once a test (mock or practice) is finished, CONTINUE while a
   // finished mock still has unanswered questions waiting in the untimed phase.
   const myAttempts = await prisma.attempt.findMany({
@@ -59,8 +74,14 @@ export default async function ExamPapersPage({
             <span className="inline-block bg-exam-dark text-white font-exam font-bold text-2xl leading-none px-3 py-2 rounded-lg">
               {exam.name}
             </span>
-            <h1 className="font-heading text-3xl font-semibold text-gray-900 mt-4">{exam.name} papers</h1>
-            {exam.description && <p className="text-gray-600 mt-1">{exam.description}</p>}
+            <h1 className="font-heading text-3xl font-semibold text-gray-900 mt-4">
+              {activeTab ? `${exam.name} ${activeTab.label}` : `${exam.name} papers`}
+            </h1>
+            {activeTab ? (
+              <p className="text-gray-600 mt-1">{activeTab.description}</p>
+            ) : (
+              exam.description && <p className="text-gray-600 mt-1">{exam.description}</p>
+            )}
           </div>
 
           {isAdmin && (
@@ -73,7 +94,30 @@ export default async function ExamPapersPage({
           )}
         </div>
 
-        {exam.papers.length === 0 ? (
+        {tabs.length > 0 && (
+          <nav aria-label={`${exam.name} paper types`} data-exam-theme={theme} className="flex flex-wrap gap-1 border-b border-gray-200">
+            {tabs.map((t) => {
+              const active = t.key === (activeTab?.key ?? null);
+              return (
+                <Link
+                  key={t.key ?? "papers"}
+                  href={t.key ? `/exams/${exam.slug}?tab=${t.key}` : `/exams/${exam.slug}`}
+                  aria-current={active ? "page" : undefined}
+                  className={`-mb-px inline-flex items-center gap-2 px-4 h-11 text-sm font-semibold border-b-2 ${
+                    active ? "border-exam-primary text-exam-dark" : "border-transparent text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {t.label}
+                  <span className={`text-xs tabular-nums px-1.5 py-0.5 rounded ${active ? "bg-exam-tint text-exam-dark" : "bg-gray-100 text-gray-600"}`}>
+                    {t.count}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+
+        {papers.length === 0 ? (
           <div className="text-gray-600 bg-white p-10 border border-gray-200 rounded-2xl text-center space-y-3">
             <FileText className="w-8 h-8 mx-auto text-gray-400" aria-hidden />
             <p className="font-semibold text-gray-900">No papers published yet for {exam.name}.</p>
@@ -89,7 +133,7 @@ export default async function ExamPapersPage({
           </div>
         ) : (
           <div data-exam-theme={theme} className="space-y-3">
-            {exam.papers.map((paper) => {
+            {papers.map((paper) => {
               const state = progress.get(paper.id);
               return (
               <div

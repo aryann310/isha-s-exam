@@ -1,7 +1,7 @@
 // Exam pattern presets. Each paper picks one; the mock engine, timers and scoring follow it.
 // Patterns describe the publicly documented exam rules (sections, timing, navigation, marking).
 
-export type ExamPatternId = "CAT" | "CMAT" | "NMAT" | "SNAP" | "SURPRISE" | "CUSTOM";
+export type ExamPatternId = "CAT" | "CAT_RC" | "CMAT" | "NMAT" | "SNAP" | "SURPRISE" | "CUSTOM";
 export type QuestionType = "MCQ" | "TITA";
 
 export interface PatternSection {
@@ -35,6 +35,13 @@ export interface ExamPattern {
   marks: { correct: number; incorrect: number; unattempted: number; titaCorrect: number; titaIncorrect: number };
   sections: PatternSection[];
   instructions: string[];
+  /**
+   * Papers of this pattern are listed in their own tab on the exam's page (e.g. CAT → "Reading Comprehension"),
+   * instead of with the full papers.
+   */
+  tab?: { key: string; label: string; description: string };
+  /** Only taken as a timed mock (no practice mode). */
+  mockOnly?: boolean;
 }
 
 const LINEAR_INSTRUCTIONS = [
@@ -78,6 +85,37 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
       "Each correct answer earns 3 marks. A wrong multiple-choice answer loses 1 mark. There is no negative marking for TITA questions.",
       "An on-screen calculator is available from the top bar.",
     ],
+  },
+  CAT_RC: {
+    id: "CAT_RC",
+    label: "CAT RC",
+    summary:
+      "A Reading Comprehension set under CAT's VARC rules: passages, each followed by its questions. One timer at CAT's pace (the actual CAT gives 40 minutes for 24 VARC questions, so 100 seconds a question). +3 / −1. Mock test only.",
+    timing: "overall",
+    sectionOrder: "fixed",
+    canSubmitSectionEarly: false,
+    // As in the actual CAT, a section cannot be ended before its time is up.
+    canSubmitEarly: false,
+    navigation: "free",
+    calculator: true,
+    // The paper's own time is used (100 seconds per question); 20 minutes is the preset for a 12-question set.
+    totalMinutes: 20,
+    marks: { correct: 3, incorrect: -1, unattempted: 0, titaCorrect: 3, titaIncorrect: 0 },
+    sections: [{ name: "Reading Comprehension", aliases: ["reading", "rc", "varc", "verbal"], minutes: 0 }],
+    instructions: [
+      "This is a Reading Comprehension set under the rules of CAT's VARC section. Each passage is followed by its questions, and the passage is shown with every question.",
+      "The time follows CAT's pace: the actual CAT gives 40 minutes for 24 VARC questions, about 100 seconds per question. There is one timer for the whole set.",
+      "All questions are multiple choice. Each correct answer earns 3 marks. A wrong answer loses 1 mark. Unanswered questions score 0.",
+      "As in the actual CAT, the set cannot be submitted early: it ends by itself when the timer reaches zero.",
+      "An on-screen calculator is available from the top bar, as in the actual CAT.",
+      "After the test you see your result, then the correct answer and a full solution for every question.",
+    ],
+    mockOnly: true,
+    tab: {
+      key: "rc",
+      label: "Reading Comprehension",
+      description: "RC sets under CAT's VARC rules: 100 seconds per question, +3 / −1, taken as mock tests.",
+    },
   },
   NMAT: {
     id: "NMAT",
@@ -186,6 +224,7 @@ export const EXAM_PATTERNS: Record<ExamPatternId, ExamPattern> = {
       "Calculators are not allowed; use rough paper.",
       "When you submit (or the time runs out) you see your result straight away, with the answer and a worked solution for every question.",
     ],
+    mockOnly: true,
   },
   CUSTOM: {
     id: "CUSTOM",
