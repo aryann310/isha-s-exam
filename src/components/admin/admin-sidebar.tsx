@@ -13,6 +13,7 @@ import {
   ListChecks,
   LogOut,
   Menu,
+  MessageCircle,
   Radio,
   Upload,
   Users,
@@ -32,7 +33,13 @@ const NAV = [
     { href: "/admin/questions", label: "Questions", icon: ListChecks },
     { href: "/admin/import", label: "Bulk import", icon: Upload },
   ] },
-  { group: "People", items: [{ href: "/admin/users", label: "Students", icon: Users }] },
+  {
+    group: "People",
+    items: [
+      { href: "/admin/users", label: "Students", icon: Users },
+      { href: "/admin/advisor", label: "AI advisor", icon: MessageCircle },
+    ],
+  },
 ];
 
 export function AdminSidebar({ adminName, liveCount, logout }: { adminName: string; liveCount: number; logout: () => Promise<void> }) {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepAliveAction, saveResponseAction, submitExamAction, submitSectionAction, visitQuestionAction } from "@/server/actions/engine";
 import { useSaveQueue, type SaveJob } from "@/components/exam/use-save-queue";
+import { useActivityLog } from "@/components/exam/use-activity-log";
 import { renderMarkdownWithMath } from "@/lib/render-markdown";
 import { ExamCalculator } from "@/components/exam/exam-calculator";
 import { PALETTE_LABELS, PALETTE_ORDER, PaletteSymbol, paletteStatus, type PaletteStatus } from "@/components/exam/palette-symbol";
@@ -166,9 +167,13 @@ export function MockExamEngine(props: Props) {
     storageKey: `exam-unsent:${attemptId}`,
     onRestore,
   });
+  // Everything the candidate does, for the advisor's review after the test (separate from answer saves).
+  const activity = useActivityLog(attemptId);
 
   const timeUp = useCallback(async () => {
     setEnding(true);
+    activity.log("submit", undefined, "timeup");
+    void activity.flush();
     // Send answers still in the queue first (the server accepts saves a few seconds past the deadline).
     await flush(8000);
     // The next section is on its way once the server has moved on: give the page refresh time to arrive (it can
@@ -193,7 +198,7 @@ export function MockExamEngine(props: Props) {
       timeUpStarted.current = false;
       setEnding(false);
     }, retryMs);
-  }, [attemptId, finish, flush, props.currentSectionIndex, router, sectional]);
+  }, [activity, attemptId, finish, flush, props.currentSectionIndex, router, sectional]);
 
   useEffect(() => {
     if (!props.deadline) return;
@@ -219,6 +224,12 @@ export function MockExamEngine(props: Props) {
     reported.current.add(qid);
     enqueue({ kind: "visit", key: `visit:${qid}`, label: "", questionId: qid });
   }, [enqueue, qid]);
+
+  // Every time a question is shown (first visit or a return), for time-per-question in the review.
+  const { log } = activity;
+  useEffect(() => {
+    if (qid) log("view", qid);
+  }, [log, qid]);
 
   // Keep the database and server warm during long pauses (reading a passage): the free database sleeps after
   // a few idle minutes and waking it would delay the next click. Saves already count as activity.
@@ -251,6 +262,7 @@ export function MockExamEngine(props: Props) {
     if (!q || busy || ending) return;
     if (linear && !hasAnswer(next)) return;
     setResponses((prev) => ({ ...prev, [q.id]: next }));
+    activity.log("save", q.id, next.answer, next.markedForReview);
     let visitNext: string | null = null;
     // On the last question there is nowhere to go: stay and keep showing the answer.
     if (advance && current < questions.length - 1) {
@@ -283,6 +295,8 @@ export function MockExamEngine(props: Props) {
   const submit = async () => {
     setBusy(true);
     setError(null);
+    activity.log("submit", undefined, sectional && !props.isLastSection ? "section" : "test");
+    void activity.flush();
     // Every answer must reach the server before the section or test is closed.
     if (!(await flush(20_000))) {
       setError("Some answers are still being saved. Check your internet connection, then submit again.");
@@ -372,7 +386,14 @@ export function MockExamEngine(props: Props) {
             </button>
           )}
           {props.calculator && (
-            <button onClick={() => setShowCalc((v) => !v)} className={toolButton} aria-label="Calculator">
+            <button
+              onClick={() => {
+                setShowCalc((v) => !v);
+                activity.log("calc");
+              }}
+              className={toolButton}
+              aria-label="Calculator"
+            >
               <Calculator className="w-4 h-4" aria-hidden />
               <span className="hidden sm:inline">Calculator</span>
             </button>
@@ -491,7 +512,10 @@ export function MockExamEngine(props: Props) {
                           type="radio"
                           name={`q-${q.id}`}
                           checked={draft === k}
-                          onChange={() => setDraft(k)}
+                          onChange={() => {
+                            setDraft(k);
+                            activity.log("pick", q.id, k);
+                          }}
                           className="mt-1 w-[18px] h-[18px] accent-exam-primary"
                         />
                         <span className="font-bold w-5">{k}.</span>
@@ -512,7 +536,10 @@ export function MockExamEngine(props: Props) {
                         <button
                           key={k}
                           type="button"
-                          onClick={() => setDraft((d) => ((d ?? "").length < 20 ? `${d ?? ""}${k}` : d))}
+                          onClick={() => {
+                            setDraft((d) => ((d ?? "").length < 20 ? `${d ?? ""}${k}` : d));
+                            activity.log("key", q.id);
+                          }}
                           className="h-11 rounded-md border border-gray-300 bg-white font-semibold hover:bg-gray-100"
                         >
                           {k}
@@ -543,7 +570,13 @@ export function MockExamEngine(props: Props) {
               <div className="flex-none border-t border-gray-200 bg-gray-50 px-4 md:px-7 py-2.5 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[13px] text-gray-600">Pick an answer to continue. You cannot come back to this question.</span>
                 <div className="flex gap-2">
-                  <button onClick={() => setPaletteOpen(true)} className={`${barButton} md:hidden`}>
+                  <button
+                    onClick={() => {
+                      setPaletteOpen(true);
+                      activity.log("palette");
+                    }}
+                    className={`${barButton} md:hidden`}
+                  >
                     Progress
                   </button>
                   <button onClick={saveAndNext} disabled={busy || !draft} className={`${primaryButton} px-8`}>
@@ -565,7 +598,13 @@ export function MockExamEngine(props: Props) {
                   <button onClick={() => goTo(Math.max(0, current - 1))} disabled={current === 0} className={barButton}>
                     Back
                   </button>
-                  <button onClick={() => setPaletteOpen(true)} className={`${barButton} md:hidden`}>
+                  <button
+                    onClick={() => {
+                      setPaletteOpen(true);
+                      activity.log("palette");
+                    }}
+                    className={`${barButton} md:hidden`}
+                  >
                     Palette
                   </button>
                   <button onClick={saveAndNext} disabled={busy} className={primaryButton}>
