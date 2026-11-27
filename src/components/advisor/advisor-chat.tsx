@@ -14,7 +14,13 @@ export interface ChatMessage {
 }
 
 interface Props {
-  attemptId: string;
+  /** Where messages are sent: one test's chat, or the general chat on the analytics tab. */
+  endpoint: string;
+  /** The advisor's opening words, shown before the first message (not sent to the model, not counted). */
+  greeting?: string;
+  /** One line under the title. */
+  description?: string;
+  emptyReadOnly?: string;
   messages: ChatMessage[];
   configured: boolean;
   readOnly: boolean;
@@ -22,7 +28,7 @@ interface Props {
   suggestions: string[];
 }
 
-export function AdvisorChat({ attemptId, messages: initial, configured, readOnly, allowance, suggestions }: Props) {
+export function AdvisorChat({ endpoint, greeting, description, emptyReadOnly, messages: initial, configured, readOnly, allowance, suggestions }: Props) {
   const router = useRouter();
   const [messages, setMessages] = useState(initial);
   const [input, setInput] = useState("");
@@ -49,7 +55,7 @@ export function AdvisorChat({ attemptId, messages: initial, configured, readOnly
     setStreaming(true);
     setMessages((m) => [...m, { id: `local-u-${m.length}`, role: "user", content: message, reported: false }, { id: "streaming", role: "assistant", content: "", reported: false }]);
     try {
-      const res = await fetch(`/api/advisor/${attemptId}/chat`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
@@ -100,16 +106,19 @@ export function AdvisorChat({ attemptId, messages: initial, configured, readOnly
           <MessageCircle className="w-5 h-5 text-gray-700" aria-hidden /> Talk to your advisor
         </h2>
         {allowance && !readOnly && (
-          <span className="text-sm text-gray-600">
-            {left} of {allowance.limit} messages left today
+          <span className={`text-sm font-semibold rounded-full px-3 py-1 ${left > 0 ? "bg-gray-100 text-gray-900" : "bg-amber-100 text-amber-900"}`}>
+            {left} of {allowance.limit} chats left today
           </span>
         )}
       </div>
       <p className="text-sm text-gray-600 mt-1">
-        Ask about any question in this test, your timing, your mistakes or your next test. Answers follow the official solutions.
+        {description ?? "Ask about any question in this test, your timing, your mistakes or your next test. Answers follow the official solutions."}
       </p>
 
       <div className="mt-5 space-y-4" aria-live="polite">
+        {greeting && !readOnly && configured && (
+          <div className="max-w-[95%] bg-gray-50 border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 text-gray-900">{greeting}</div>
+        )}
         {messages.length === 0 && !readOnly && configured && (
           <div className="flex flex-wrap gap-2">
             {suggestions.map((s) => (
@@ -125,7 +134,7 @@ export function AdvisorChat({ attemptId, messages: initial, configured, readOnly
             ))}
           </div>
         )}
-        {messages.length === 0 && readOnly && <p className="text-sm text-gray-600">No conversation for this test yet.</p>}
+        {messages.length === 0 && readOnly && <p className="text-sm text-gray-600">{emptyReadOnly ?? "No conversation for this test yet."}</p>}
 
         {messages.map((m) =>
           m.role === "user" ? (
@@ -190,7 +199,7 @@ export function AdvisorChat({ attemptId, messages: initial, configured, readOnly
 
       {!readOnly && configured && left <= 0 && (
         <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-gray-800 flex flex-wrap items-center justify-between gap-3">
-          <span>You have no advisor messages left today. They reset at midnight.</span>
+          <span>You have no advisor chats left today. They reset at midnight.</span>
           {requested ? (
             <span className="font-semibold">Request sent to the admin.</span>
           ) : (

@@ -11,6 +11,8 @@ import { SiteHeader } from "@/components/site/site-header";
 import { ExamBadge } from "@/components/site/exam-badge";
 import { isSurprisePaper } from "@/lib/surprise";
 import { MessageCircle } from "lucide-react";
+import { AdvisorInvite } from "@/components/advisor/advisor-invite";
+import { advisorConfigured, chatAllowance } from "@/server/test-advisor";
 
 export const dynamic = "force-dynamic";
 
@@ -261,7 +263,18 @@ export default async function ResultPage({
           </section>
         )}
 
-        {!pending && (attempt.userId === session.userId || isAdmin) && (
+        {attempt.userId === session.userId && (
+          <AdvisorInvite
+            attemptId={attempt.id}
+            paperTitle={attempt.paper?.title || "this paper"}
+            firstName={((session.name as string) || (session.username as string) || "").split(" ")[0] || "there"}
+            pendingUntimed={pending ? (attempt.unattempted ?? 0) : 0}
+            configured={advisorConfigured()}
+            allowance={await chatAllowance(attempt.userId).then((a) => ({ left: a.left, limit: a.limit }))}
+          />
+        )}
+
+        {!pending && attempt.userId !== session.userId && isAdmin && (
           <section aria-labelledby="advisor" className="bg-white border-2 border-gray-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 id="advisor" className="font-heading text-2xl font-semibold text-gray-900 flex items-center gap-2">

@@ -20,7 +20,14 @@ const SUGGESTIONS = [
   "What should I do differently in my next test?",
 ];
 
-export default async function AdvisorPage({ params }: { params: Promise<{ attemptId: string }> }) {
+export default async function AdvisorPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ attemptId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const guide = (await searchParams).guide === "1";
   const session = await getSession();
   if (!session) redirect("/login");
   const { attemptId } = await params;
@@ -38,6 +45,7 @@ export default async function AdvisorPage({ params }: { params: Promise<{ attemp
   if (!own && !isAdmin) return notFound();
 
   const name = (session.username as string) || (session.name as string) || "Student";
+  const firstName = ((session.name as string) || (session.username as string) || "").split(" ")[0] || "there";
   const header = <SiteHeader name={name} isAdmin={isAdmin} back={{ href: `/results/${attemptId}`, label: "Back to result" }} />;
 
   if (!ctx.unlocked && !isAdmin) {
@@ -87,12 +95,14 @@ export default async function AdvisorPage({ params }: { params: Promise<{ attemp
           attemptId={attemptId}
           configured={configured}
           canGenerate={own || isAdmin}
+          autoStart={guide && own}
           initial={stored ? { review: stored.review, createdAt: stored.createdAt.toISOString() } : null}
         />
 
         <AdvisorChat
           key={last?.id ?? "empty"}
-          attemptId={attemptId}
+          endpoint={`/api/advisor/${attemptId}/chat`}
+          greeting={`Hi ${firstName}! I have your whole ${ctx.paperTitle} test in front of me: every question, the official solutions${ctx.hasActivity ? ", your time on each question and every answer you changed" : " and your answers"}. Ask me about any question, or pick one of these to start.`}
           messages={messages.map((m) => ({ id: m.id, role: m.role === "assistant" ? "assistant" : "user", content: m.content, reported: m.reported }))}
           configured={configured}
           readOnly={!own}

@@ -47,7 +47,7 @@ export interface ReportedItem {
   id: string;
   student: string;
   paper: string;
-  attemptId: string;
+  chatHref: string;
   question: string | null;
   answer: string;
   note: string | null;
@@ -65,7 +65,7 @@ export function ReportedAnswer({ item }: { item: ReportedItem }) {
           <span className="text-slate-500"> · {item.paper} · {item.when}</span>
         </span>
         <span className="flex gap-2">
-          <Link href={`/results/${item.attemptId}/advisor`} className={btnCls.secondary}>
+          <Link href={item.chatHref} className={btnCls.secondary}>
             Open the chat
           </Link>
           {done ? (
