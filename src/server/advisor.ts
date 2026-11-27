@@ -17,6 +17,7 @@ import {
 } from "@/server/student-analytics";
 
 import { loadTestContext } from "@/server/test-advisor";
+import { advisorKeyConfigured, anthropicClient } from "@/lib/anthropic";
 
 export const ADVISOR_MODEL = "claude-haiku-5-5";
 
@@ -216,7 +217,7 @@ function parseAdvice(text: string): Advice {
 }
 
 export function advisorConfigured(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+  return advisorKeyConfigured();
 }
 
 /** Saved advice for this scope, and whether new tests have been finished since it was written. */
@@ -237,7 +238,7 @@ export async function generateAdvice(userId: string, scope: string, scopeLabel: 
   if (!analytics.tests.length) throw new Error("Finish at least one test first; the coach needs your results.");
 
   const input = await buildAdviceInput(analytics, scopeLabel);
-  const client = new Anthropic();
+  const client = anthropicClient();
   let message;
   try {
     // Claude Haiku 5.5 has no server-side refusal fallback; a refusal is handled below.
