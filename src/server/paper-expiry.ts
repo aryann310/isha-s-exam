@@ -9,6 +9,16 @@ export function isPaperClosed(paper: { closedAt?: Date | null }, now = new Date(
   return !!paper.closedAt && paper.closedAt.getTime() <= now.getTime();
 }
 
+/** Scheduled to open later: students see a countdown and cannot start it yet. */
+export function isPaperUpcoming(paper: { opensAt?: Date | null }, now = new Date()): boolean {
+  return !!paper.opensAt && paper.opensAt.getTime() > now.getTime();
+}
+
+/** "Sat 28 Nov, 9:30 am" in India time. */
+export function formatOpening(when: Date): string {
+  return when.toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
+}
+
 /** Past its delete time (students no longer see it, even before the purge removes it). */
 export function isPaperExpired(paper: { deleteAt?: Date | null }, now = new Date()): boolean {
   return !!paper.deleteAt && paper.deleteAt.getTime() <= now.getTime();

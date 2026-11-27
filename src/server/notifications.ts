@@ -53,6 +53,8 @@ export async function announceNewPapers({ force = false, paperId }: { force?: bo
       isActive: true,
       totalQuestions: { gt: 0 },
       exam: { isActive: true },
+      // A scheduled paper is announced when it opens, not when it is loaded.
+      OR: [{ opensAt: null }, { opensAt: { lte: new Date(now) } }],
       // "Announce now" from the admin page skips the quiet wait.
       ...(paperId ? { id: paperId } : { updatedAt: { lt: new Date(now - QUIET_MS) } }),
     },

@@ -7,7 +7,7 @@ import { getPattern, resolvePaperSections } from "@/lib/exam-patterns";
 import { themeForPaper } from "@/lib/exam-theme";
 import { SiteHeader } from "@/components/site/site-header";
 import { isSurprisePaper } from "@/lib/surprise";
-import { isPaperExpired, isPaperClosed } from "@/server/paper-expiry";
+import { isPaperUpcoming, isPaperExpired, isPaperClosed } from "@/server/paper-expiry";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +61,8 @@ export default async function PaperInfoPage({
   // A paper past its delete time is gone; a closed one shows its solutions instead of a start button.
   if (!isAdmin && isPaperExpired(paper)) return notFound();
   if (!isAdmin && isPaperClosed(paper)) redirect(`/papers/${paper.id}/solutions`);
+  // Not open yet: the Surprise Test tab shows the countdown.
+  if (!isAdmin && isPaperUpcoming(paper)) redirect(paper.examPattern === "SURPRISE" ? "/surprise" : "/exams");
 
   const pattern = getPattern(paper.examPattern);
   const sections = resolvePaperSections(paper, paper.questions);
