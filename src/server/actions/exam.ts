@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { createAttempt } from "@/server/attempts";
-import { isSurprisePaper } from "@/lib/surprise";
+import { getPattern } from "@/lib/exam-patterns";
 
 export async function startExamAction(formData: FormData) {
   const session = await getSession();
@@ -25,8 +25,8 @@ export async function startExamAction(formData: FormData) {
   if (!paper) {
     throw new Error("Paper not found");
   }
-  // Surprise tests are always taken as a timed mock.
-  if (mode === "PRACTICE" && isSurprisePaper(paper)) {
+  // Some papers (Surprise Test, CAT RC sets) are only taken as a timed mock.
+  if (mode === "PRACTICE" && getPattern(paper.examPattern).mockOnly) {
     redirect(`/papers/${paper.id}/instructions`);
   }
 

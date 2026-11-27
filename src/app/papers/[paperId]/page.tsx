@@ -72,10 +72,12 @@ export default async function PaperInfoPage({
 
   const name = (session.username as string) || (session.name as string) || "Student";
   const surprise = isSurprisePaper(paper);
+  // Some papers are only taken as a timed mock (Surprise Test, CAT RC sets).
+  const mockOnly = !!pattern.mockOnly;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <SiteHeader name={name} isAdmin={isAdmin} back={surprise ? { href: "/surprise", label: "Surprise Test" } : { href: `/exams/${paper.exam.slug}`, label: `${paper.exam.name} papers` }} />
+      <SiteHeader name={name} isAdmin={isAdmin} back={surprise ? { href: "/surprise", label: "Surprise Test" } : pattern.tab ? { href: `/exams/${paper.exam.slug}?tab=${pattern.tab.key}`, label: `${paper.exam.name} ${pattern.tab.label}` } : { href: `/exams/${paper.exam.slug}`, label: `${paper.exam.name} papers` }} />
 
       <main data-exam-theme={themeForPaper(paper, paper.exam.name)} className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10">
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -115,12 +117,12 @@ export default async function PaperInfoPage({
             )}
 
             <div className="border-t border-gray-200 pt-8">
-              <h2 className="font-heading text-2xl font-semibold text-gray-900 mb-4">How do you want to take it?</h2>
+              <h2 className="font-heading text-2xl font-semibold text-gray-900 mb-4">{mockOnly ? "Taken as a mock test" : "How do you want to take it?"}</h2>
 
-              <form action={startExamAction} className={surprise ? "grid gap-4" : "grid sm:grid-cols-2 gap-4"}>
+              <form action={startExamAction} className={mockOnly ? "grid gap-4" : "grid sm:grid-cols-2 gap-4"}>
                 <input type="hidden" name="paperId" value={paper.id} />
 
-                {!surprise && <button
+                {!mockOnly && <button
                   type="submit"
                   name="mode"
                   value="PRACTICE"
@@ -136,10 +138,12 @@ export default async function PaperInfoPage({
                   href={`/papers/${paper.id}/instructions`}
                   className="w-full bg-exam-primary hover:bg-exam-primary-hover text-white p-5 rounded-xl text-left transition-colors"
                 >
-                  <span className="block text-lg font-bold mb-1">{surprise ? "Start the surprise test" : "Mock test"}</span>
+                  <span className="block text-lg font-bold mb-1">{surprise ? "Start the surprise test" : mockOnly ? "Start the mock test" : "Mock test"}</span>
                   <span className="block text-sm text-white/85 leading-relaxed">
                     {surprise
                       ? "One 60-minute timer, question palette, Mark for Review. Your result and every solution appear as soon as you submit."
+                      : mockOnly
+                      ? `${pattern.label} rules: ${mockMinutes}-minute timer, question palette, Mark for Review. Your result, the answers and a full solution for every question after the test.`
                       : pattern.navigation === "linear"
                       ? `Real ${pattern.label} conditions: timed sections, one question at a time, no going back. Answers and solutions after you submit.`
                       : `Real ${pattern.label} conditions: timer, question palette, Mark for Review. Answers and solutions after you submit.`}
