@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Bell,
   ChartColumn,
   ClipboardList,
   ExternalLink,
@@ -38,6 +39,7 @@ const NAV = [
     items: [
       { href: "/admin/users", label: "Students", icon: Users },
       { href: "/admin/advisor", label: "AI advisor", icon: MessageCircle },
+      { href: "/admin/notifications", label: "Notifications", icon: Bell },
     ],
   },
 ];
