@@ -21,6 +21,11 @@ model User {
 
   attempts      Attempt[]
   advisories    Advisory[]
+  coachMessages CoachMessage[]
+
+  // AI advisor chat: messages allowed per day (admins raise it on request), and when the student last asked.
+  advisorDailyLimit       Int       @default(40)
+  advisorLimitRequestedAt DateTime?
 }
 
 model Exam {
@@ -109,6 +114,8 @@ model Attempt {
   paper         Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
   answers       AttemptAnswer[]
   untimedAnswers UntimedAnswer[]
+  activity       AttemptActivity[]
+  coachMessages  CoachMessage[]
 
   @@index([status])
   @@index([userId])
@@ -164,4 +171,39 @@ model Advisory {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, scope])
+}
+
+/// What the candidate did during a mock, sent from the test screen in batches: questions opened, options
+/// clicked, saves, leaving the tab, idle time. `events` is a JSON array, see src/server/behaviour.ts.
+model AttemptActivity {
+  id        String   @id @default(cuid())
+  attemptId String
+  events    String
+  createdAt DateTime @default(now())
+
+  attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, createdAt])
+}
+
+/// "Talk to your advisor" chat after a test. Students can report a wrong answer for an admin to check.
+model CoachMessage {
+  id           String    @id @default(cuid())
+  attemptId    String
+  userId       String
+  role         String // user | assistant
+  content      String
+  inputTokens  Int?
+  outputTokens Int?
+  reported     Boolean   @default(false)
+  reportNote   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, createdAt])
+  @@index([userId, createdAt])
+  @@index([reported])
 }

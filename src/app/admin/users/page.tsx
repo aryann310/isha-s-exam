@@ -13,7 +13,17 @@ export default async function AdminUsersPage() {
 
   const users = await prisma.user.findMany({
     orderBy: [{ role: "asc" }, { createdAt: "desc" }],
-    select: { id: true, name: true, username: true, email: true, role: true, isActive: true, createdAt: true, _count: { select: { attempts: true } } },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+      advisorLimitRequestedAt: true,
+      _count: { select: { attempts: true } },
+    },
   });
 
   return (
@@ -29,6 +39,7 @@ export default async function AdminUsersPage() {
           isActive: u.isActive,
           attempts: u._count.attempts,
           joined: formatDate(u.createdAt),
+          advisorRequested: !!u.advisorLimitRequestedAt,
         }))}
       />
     </>

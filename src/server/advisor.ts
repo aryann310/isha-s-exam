@@ -16,7 +16,9 @@ import {
   type StudentAnalytics,
 } from "@/server/student-analytics";
 
-export const ADVISOR_MODEL = "claude-opus-5-5";
+import { loadTestContext } from "@/server/test-advisor";
+
+export const ADVISOR_MODEL = "claude-haiku-5-5";
 
 export interface Advice {
   headline: string;
@@ -84,6 +86,8 @@ How to write it:
 - Speak to the student as "you", warmly and directly. Plain, simple English: many students are not native speakers.
 - Every claim must come from the data. Quote the numbers (accuracy, marks lost, attempts, time per question) and, where it helps, a specific question from the mistakes list. Never invent scores, cut-offs, percentiles or exam facts that are not in the data.
 - Look for the patterns that cost the most marks: negative marking from guessing, errors on easy questions (carelessness), sections or topics with low accuracy, too few attempts, too slow a pace, and questions skipped in the test but solved later in the untimed phase (a time-management problem, not a knowledge gap).
+- Use examBehaviourRecentTests when present: quick answers (and how many were right), right answers changed to wrong, leaving the test, idle stretches, and the last ten minutes. These show exam habits, not just knowledge gaps.
+- When you explain a mistake from recentWrongAnswers, follow its official solution; never give a different answer or method.
 - Give advice the student can act on in the next test: attempt targets, which section or question types to do first or skip on a first pass, time per question, when to guess and when not to (consider the negative marks).
 - Keep each item to one or two sentences. If there is little data (for example one short test), say so briefly and keep the advice modest.`;
 
@@ -179,8 +183,21 @@ export async function buildAdviceInput(a: StudentAnalytics, scopeLabel: string) 
       note: "Questions the student skipped in a timed test, then answered afterwards with no time limit (not scored).",
       ...a.untimed,
     },
+    examBehaviourRecentTests: await recentBehaviour(a),
     recentWrongAnswers: await recentMistakes(a),
   };
+}
+
+/** What the student did during their last few tests (from the activity log), oldest first. */
+async function recentBehaviour(a: StudentAnalytics, n = 5) {
+  const out = [];
+  for (const t of a.tests.slice(-n)) {
+    const ctx = await loadTestContext(t.attemptId);
+    if (ctx?.stats) out.push({ test: t.paperTitle, date: t.date.toISOString().slice(0, 10), ...ctx.stats });
+  }
+  return out.length
+    ? out
+    : "No activity recorded yet (activity tracking applies to tests taken from now on): time per question and clicks are not available.";
 }
 
 function parseAdvice(text: string): Advice {
@@ -223,13 +240,12 @@ export async function generateAdvice(userId: string, scope: string, scopeLabel: 
   const client = new Anthropic();
   let message;
   try {
-    message = await client.beta.messages
+    // Claude Haiku 5.5 has no server-side refusal fallback; a refusal is handled below.
+    message = await client.messages
       .stream({
         model: ADVISOR_MODEL,
         max_tokens: 16000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        output_config: { effort: "medium", format: { type: "json_schema", schema: ADVICE_SCHEMA } },
+        output_config: { effort: "high", format: { type: "json_schema", schema: ADVICE_SCHEMA } },
         system: SYSTEM_PROMPT,
         messages: [
           {

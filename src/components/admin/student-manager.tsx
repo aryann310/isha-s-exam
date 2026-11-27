@@ -14,6 +14,8 @@ export interface StudentRow {
   isActive: boolean;
   attempts: number;
   joined: string;
+  /** Asked for more AI advisor messages (handled on /admin/advisor). */
+  advisorRequested?: boolean;
 }
 
 const field = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-slate-400 focus:outline-none";
@@ -100,7 +102,16 @@ export function StudentManager({ users }: { users: StudentRow[] }) {
                       <p className="text-slate-800">{u.username ?? <span className="text-slate-400">no username</span>}</p>
                       <p className="text-slate-500">{u.email}</p>
                     </td>
-                    <td className={tableCls.td}>{u.role === "ADMIN" ? <Badge>Admin</Badge> : <Badge tone="blue">Student</Badge>}</td>
+                    <td className={tableCls.td}>
+                      <span className="inline-flex flex-wrap gap-1">
+                        {u.role === "ADMIN" ? <Badge>Admin</Badge> : <Badge tone="blue">Student</Badge>}
+                        {u.advisorRequested && (
+                          <Link href="/admin/advisor">
+                            <Badge tone="amber">Wants more advisor messages</Badge>
+                          </Link>
+                        )}
+                      </span>
+                    </td>
                     <td className={`${tableCls.td} text-right tabular-nums`}>{u.attempts}</td>
                     <td className={`${tableCls.td} whitespace-nowrap text-slate-500`}>{u.joined}</td>
                     <td className={`${tableCls.td} whitespace-nowrap text-right`}>

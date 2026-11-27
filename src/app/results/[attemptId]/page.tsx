@@ -10,6 +10,7 @@ import { themeForPaper } from "@/lib/exam-theme";
 import { SiteHeader } from "@/components/site/site-header";
 import { ExamBadge } from "@/components/site/exam-badge";
 import { isSurprisePaper } from "@/lib/surprise";
+import { MessageCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -257,6 +258,25 @@ export default async function ResultPage({
                 </>
               )}
             </dl>
+          </section>
+        )}
+
+        {!pending && (attempt.userId === session.userId || isAdmin) && (
+          <section aria-labelledby="advisor" className="bg-white border-2 border-gray-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 id="advisor" className="font-heading text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                <MessageCircle className="w-5 h-5" aria-hidden /> Your advisor
+              </h2>
+              <p className="text-gray-600 mt-1">
+                Get a review of this test (every question, your time and your answer changes), then ask your advisor anything about it.
+              </p>
+            </div>
+            <Link
+              href={`/results/${attempt.id}/advisor`}
+              className="inline-flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 h-11 rounded-lg shrink-0"
+            >
+              Talk to your advisor &rarr;
+            </Link>
           </section>
         )}
 
