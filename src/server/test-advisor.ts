@@ -9,6 +9,7 @@ import { parseQuestionOptions } from "@/lib/parse-markdown-questions";
 import { isSurprisePaper } from "@/lib/surprise";
 import { untimedPending } from "@/server/untimed";
 import { analyseActivity, parseActivity, type QuestionFacts } from "@/server/behaviour";
+import { advisorKeyConfigured, anthropicClient } from "@/lib/anthropic";
 
 export const ADVISOR_MODEL = "claude-haiku-5-5";
 
@@ -354,7 +355,7 @@ export async function getStoredReview(userId: string, attemptId: string): Promis
 }
 
 export function advisorConfigured(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+  return advisorKeyConfigured();
 }
 
 export function friendlyError(err: unknown): string {
@@ -366,7 +367,7 @@ export function friendlyError(err: unknown): string {
 
 export async function generateReview(ctx: TestContext): Promise<{ review: TestReview; createdAt: Date }> {
   if (!advisorConfigured()) throw new Error("The advisor is not set up yet (the ANTHROPIC_API_KEY setting is missing).");
-  const client = new Anthropic();
+  const client = anthropicClient();
   const message = await client.messages
     .stream({
       model: ADVISOR_MODEL,

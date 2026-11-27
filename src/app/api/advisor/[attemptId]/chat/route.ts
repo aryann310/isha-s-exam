@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/auth/session";
+import { anthropicClient } from "@/lib/anthropic";
 import { ADVISOR_MODEL, advisorConfigured, advisorSystem, chatAllowance, friendlyError, loadTestContext } from "@/server/test-advisor";
 
 export const maxDuration = 120;
@@ -55,7 +56,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
   const saved = await prisma.coachMessage.create({ data: { attemptId, userId, role: "user", content: message } });
 
-  const client = new Anthropic();
+  const client = anthropicClient();
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
