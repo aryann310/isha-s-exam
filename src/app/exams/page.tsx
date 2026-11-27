@@ -7,6 +7,7 @@ import { ExamBadge } from "@/components/site/exam-badge";
 import { themeForExam, themeForPaper } from "@/lib/exam-theme";
 import { SURPRISE_EXAM_SLUG } from "@/lib/surprise";
 import { Sparkles } from "lucide-react";
+import { notExpired, purgeExpiredPapers } from "@/server/paper-expiry";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +15,14 @@ export default async function ExamsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   const isAdmin = session.role === "ADMIN";
+  await purgeExpiredPapers();
 
   const [allExams, myAttempts] = await Promise.all([
     prisma.exam.findMany({
       where: { isActive: true },
       include: {
         papers: {
-          where: { isActive: true },
+          where: { isActive: true, ...notExpired() },
           select: { id: true, examPattern: true },
         },
       },

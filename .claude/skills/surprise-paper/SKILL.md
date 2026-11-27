@@ -62,6 +62,19 @@ node scripts/surprise/push-paper.mjs ../EXAM-SYSTEM/.surprise-papers/<file>.json
 - Live loads only insert a new paper, so no backup is needed. The script reads back the stored keys.
 - `--replace` swaps a paper with the same title only if nobody has attempted it yet. To pull a live paper, an admin can hide it in Admin → Papers.
 
-## 6. Report
+## 6. Closing an old paper
+
+If the user wants an earlier paper retired (often when a new one goes out):
+
+```
+node scripts/surprise/push-paper.mjs --close "Surprise Test 1" --db live --delete-after 24h
+```
+
+Closed papers take no new attempts (a test already running may finish), show "Closed · View solutions" in the tab,
+and their solutions open to every student at `/papers/<id>/solutions`. With `--delete-after`, the paper and all its
+attempts are deleted automatically at that time (`src/server/paper-expiry.ts`; runs within about a minute). Back up the
+paper's attempts first if anyone has taken it (`.db-backups/`), since the deletion cannot be undone.
+
+## 7. Report
 
 Tell the user the title, the mix (subjects, styles, difficulties), any questions you dropped or changed during verification, and that it is live at `/surprise` on isha-s-exam.vercel.app.
