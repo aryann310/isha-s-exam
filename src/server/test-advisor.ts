@@ -79,8 +79,26 @@ export interface TestContext {
   } | null;
 }
 
-/** Builds the TEST RECORD for a finished mock (or practice) attempt. Returns null if not found / not finished. */
-export async function loadTestContext(attemptId: string): Promise<TestContext | null> {
+interface QuestionRow {
+  id: string;
+  questionNumber: number;
+  section: string | null;
+  topic: string | null;
+  difficulty: string | null;
+  questionType: string;
+  correctAnswer: string;
+  // Only loaded for the full record (statsOnly skips them: they are most of the data).
+  questionText?: string;
+  options?: string;
+  explanation?: string | null;
+}
+
+/**
+ * Builds the TEST RECORD for a finished mock (or practice) attempt. Returns null if not found / not finished.
+ * `statsOnly` skips the question texts and solutions and returns only the numbers (`stats`), for summaries
+ * across many tests.
+ */
+export async function loadTestContext(attemptId: string, opts: { statsOnly?: boolean } = {}): Promise<TestContext | null> {
   const attempt = await prisma.attempt.findUnique({
     where: { id: attemptId },
     select: {
@@ -94,6 +112,7 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
       unattempted: true,
       untimedEndedAt: true,
       sectionOrder: true,
+      paperId: true,
       paper: {
         select: {
           title: true,
@@ -106,10 +125,6 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
           titaCorrectMarks: true,
           titaIncorrectMarks: true,
           exam: { select: { name: true } },
-          questions: {
-            orderBy: [{ questionNumber: "asc" }, { id: "asc" }],
-            select: { id: true, questionNumber: true, section: true, topic: true, difficulty: true, questionType: true, questionText: true, options: true, correctAnswer: true, explanation: true },
-          },
         },
       },
       answers: { select: { questionId: true, selectedAnswer: true, markedForReview: true } },
@@ -120,8 +135,15 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
   if (!attempt || attempt.status === "IN_PROGRESS") return null;
 
   const p = attempt.paper;
+  const paperQuestions: QuestionRow[] = await prisma.question.findMany({
+    where: { paperId: attempt.paperId },
+    orderBy: [{ questionNumber: "asc" }, { id: "asc" }],
+    select: opts.statsOnly
+      ? { id: true, questionNumber: true, section: true, topic: true, difficulty: true, questionType: true, correctAnswer: true }
+      : { id: true, questionNumber: true, section: true, topic: true, difficulty: true, questionType: true, correctAnswer: true, questionText: true, options: true, explanation: true },
+  });
   const pattern = getPattern(p.examPattern);
-  const sections = resolvePaperSections(p, p.questions);
+  const sections = resolvePaperSections(p, paperQuestions);
   let order: string[] = sections.map((s) => s.name);
   try {
     const chosen = attempt.sectionOrder ? (JSON.parse(attempt.sectionOrder) as string[]) : null;
@@ -130,7 +152,7 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
     // keep the paper's order
   }
   const rank = (s: string) => (order.indexOf(s) < 0 ? order.length : order.indexOf(s));
-  const questions = [...p.questions].sort((a, b) => rank(sectionKey(a.section)) - rank(sectionKey(b.section)) || a.questionNumber - b.questionNumber);
+  const questions = [...paperQuestions].sort((a, b) => rank(sectionKey(a.section)) - rank(sectionKey(b.section)) || a.questionNumber - b.questionNumber);
 
   const answerBy = new Map(attempt.answers.map((a) => [a.questionId, a]));
   const untimedBy = new Map(attempt.untimedAnswers.map((a) => [a.questionId, a.selectedAnswer]));
@@ -192,6 +214,7 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
       }
     }
     if (ans?.markedForReview) flags.push("marked for review");
+    if (opts.statsOnly) continue;
 
     // A passage shared with the previous question is written out once.
     // prevNumber always points at the question where the passage is written out in full.
@@ -205,8 +228,8 @@ export async function loadTestContext(attemptId: string): Promise<TestContext | 
       prevNumber = q.questionNumber;
     }
 
-    const opts = q.questionType === "TITA" ? {} : parseQuestionOptions(q.options);
-    const optText = Object.entries(opts).map(([k, v]) => `${k}) ${norm(v)}`).join("\n");
+    const optionMap = q.questionType === "TITA" ? {} : parseQuestionOptions(q.options ?? "{}");
+    const optText = Object.entries(optionMap).map(([k, v]) => `${k}) ${norm(v)}`).join("\n");
     const outcome = !attempted ? `not answered (skipped, ${marks} marks)` : `${sel} — ${right ? "CORRECT" : "WRONG"} (${marks > 0 ? "+" : ""}${marks} marks)`;
     const later = untimedBy.get(q.id);
     const activityLine = f

@@ -35,6 +35,7 @@ export default async function AdminAdvisorPage() {
         reportNote: true,
         createdAt: true,
         attemptId: true,
+        userId: true,
         user: { select: { name: true, username: true } },
         attempt: { select: { paper: { select: { title: true } } } },
       },
@@ -53,7 +54,7 @@ export default async function AdminAdvisorPage() {
   const asked = await Promise.all(
     reported.map((r) =>
       prisma.coachMessage.findFirst({
-        where: { attemptId: r.attemptId, role: "user", createdAt: { lte: r.createdAt } },
+        where: { attemptId: r.attemptId, userId: r.userId, role: "user", createdAt: { lte: r.createdAt } },
         orderBy: { createdAt: "desc" },
         select: { content: true },
       })
@@ -115,8 +116,8 @@ export default async function AdminAdvisorPage() {
                   item={{
                     id: r.id,
                     student: who(r.user),
-                    paper: r.attempt.paper.title,
-                    attemptId: r.attemptId,
+                    paper: r.attempt?.paper.title ?? "General chat (all tests)",
+                    chatHref: r.attemptId ? `/results/${r.attemptId}/advisor` : `/analytics?student=${r.userId}#chat`,
                     question: asked[i]?.content ?? null,
                     answer: r.content,
                     note: r.reportNote,

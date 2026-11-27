@@ -65,9 +65,10 @@ export async function finishUntimedAction(attemptId: string): Promise<Outcome> {
   return { ok: true };
 }
 
-/** Form version for the result page's "skip" button: ends the phase and opens the solutions. */
+/** Form version of "skip": ends the phase, then opens the solutions (or the advisor, with next=advisor). */
 export async function skipUntimedFormAction(formData: FormData) {
   const attemptId = String(formData.get("attemptId") ?? "");
   const res = await finishUntimedAction(attemptId);
-  redirect(res.ok ? `/solutions/${attemptId}` : `/results/${attemptId}`);
+  if (!res.ok) redirect(`/results/${attemptId}`);
+  redirect(formData.get("next") === "advisor" ? `/results/${attemptId}/advisor?guide=1` : `/solutions/${attemptId}`);
 }

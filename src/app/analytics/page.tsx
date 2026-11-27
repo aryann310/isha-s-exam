@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, MessageCircle } from "lucide-react";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site/site-header";
 import { TrendChart } from "@/components/analytics/trend-chart";
 import { AdvicePanel } from "@/components/analytics/advice-panel";
+import { AdvisorChat } from "@/components/advisor/advisor-chat";
+import { chatAllowance } from "@/server/test-advisor";
+import { untimedPending } from "@/server/untimed";
 import { advisorConfigured, getStoredAdvice } from "@/server/advisor";
 import {
   accuracyOf,
@@ -54,6 +57,25 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const stored = await getStoredAdvice(userId, scope, scopeBasis);
 
   const viewerName = (session.username as string) || (session.name as string) || "Student";
+
+  // Advisor chat about all tests (attemptId null), the chats left today, and each test's own advisor.
+  const own = !student;
+  const [generalMessages, allowance, unlocked] = await Promise.all([
+    prisma.coachMessage.findMany({
+      where: { userId, attemptId: null },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, role: true, content: true, reported: true },
+    }),
+    own ? chatAllowance(userId) : Promise.resolve(null),
+    prisma.attempt.findMany({
+      where: { id: { in: unfiltered.tests.map((t) => t.attemptId) } },
+      select: { id: true, mode: true, status: true, unattempted: true, untimedEndedAt: true },
+    }),
+  ]);
+  const openForAdvisor = new Set(unlocked.filter((x) => !untimedPending(x)).map((x) => x.id));
+  const testAdvisors = [...unfiltered.tests].reverse().filter((t) => openForAdvisor.has(t.attemptId)).slice(0, 8);
+  const firstName = ((session.name as string) || (session.username as string) || "").split(" ")[0] || "there";
+  const lastGeneral = generalMessages[generalMessages.length - 1];
   const who = student ? student.name || student.username || "Student" : null;
   const href = (p: { exam?: string | null; type?: string | null }) => {
     const q = new URLSearchParams();
@@ -120,6 +142,27 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
               </div>
             </nav>
 
+            {own && advisorConfigured() && allowance && (
+              <a
+                href="#chat"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-900 text-white rounded-2xl px-5 py-4 hover:bg-gray-800"
+              >
+                <span className="flex items-center gap-3">
+                  <MessageCircle className="w-5 h-5 shrink-0" aria-hidden />
+                  <span>
+                    <span className="font-semibold">Chat with your advisor</span>
+                    <span className="block text-sm text-gray-300">Ask about your results, your mistakes or your next test.</span>
+                  </span>
+                </span>
+                <span className="flex items-center gap-3 shrink-0">
+                  <span className="text-sm bg-white/15 rounded-full px-3 py-1">
+                    <span className="font-bold">{allowance.left}</span> of {allowance.limit} chats left today
+                  </span>
+                  <span className="font-semibold">Start chatting &rarr;</span>
+                </span>
+              </a>
+            )}
+
             {a.tests.length === 0 ? (
               <p className="bg-white border border-gray-200 rounded-2xl p-6 text-gray-700">No finished tests match these filters.</p>
             ) : (
@@ -147,6 +190,44 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
                   hasTests={a.tests.length > 0}
                   initial={stored ? { advice: stored.advice, createdAt: stored.createdAt.toISOString(), stale: stored.stale } : null}
                 />
+
+                <div className="scroll-mt-6" id="advisor-chat">
+                  <AdvisorChat
+                    key={lastGeneral?.id ?? "empty"}
+                    endpoint="/api/advisor/general/chat"
+                    description="Your advisor sees all your finished tests: scores, sections, topics, habits and recent mistakes. For one particular question, open that test's advisor below."
+                    greeting={`Hi ${firstName}! I have all ${unfiltered.tests.length} of your finished tests in front of me. Ask me what is costing you marks, which section to work on, or how to plan your next test.`}
+                    emptyReadOnly="No general conversation yet."
+                    messages={generalMessages.map((m) => ({ id: m.id, role: m.role === "assistant" ? "assistant" : "user", content: m.content, reported: m.reported }))}
+                    configured={advisorConfigured()}
+                    readOnly={!own}
+                    allowance={allowance ? { limit: allowance.limit, left: allowance.left, requested: !!allowance.requestedAt } : null}
+                    suggestions={[
+                      "What is costing me the most marks?",
+                      "Which section should I work on first?",
+                      "What habits should I change in my next test?",
+                      "Make me a plan for my next mock test.",
+                    ]}
+                  />
+                  {testAdvisors.length > 0 && (
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:px-8 mt-3">
+                      <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900 mb-2">Talk about one test</h3>
+                      <ul className="flex flex-wrap gap-2">
+                        {testAdvisors.map((t) => (
+                          <li key={t.attemptId}>
+                            <Link
+                              href={`/results/${t.attemptId}/advisor`}
+                              className="inline-flex items-center gap-1.5 text-sm border border-gray-200 bg-gray-50 hover:bg-gray-100 rounded-full px-3 py-1.5"
+                            >
+                              {t.paperTitle}
+                              <span className="text-gray-500">· {t.date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
 
                 <section aria-labelledby="trend" className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">
                   <h2 id="trend" className="font-heading text-2xl font-semibold text-gray-900 mb-4">Score trend</h2>

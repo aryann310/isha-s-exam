@@ -193,7 +193,7 @@ export async function buildAdviceInput(a: StudentAnalytics, scopeLabel: string) 
 async function recentBehaviour(a: StudentAnalytics, n = 5) {
   const out = [];
   for (const t of a.tests.slice(-n)) {
-    const ctx = await loadTestContext(t.attemptId);
+    const ctx = await loadTestContext(t.attemptId, { statsOnly: true });
     if (ctx?.stats) out.push({ test: t.paperTitle, date: t.date.toISOString().slice(0, 10), ...ctx.stats });
   }
   return out.length

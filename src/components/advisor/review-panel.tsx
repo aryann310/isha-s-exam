@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { ClipboardCheck } from "lucide-react";
 import { generateReviewAction } from "@/server/actions/test-advisor";
 import type { TestReview } from "@/server/test-advisor";
@@ -9,6 +9,8 @@ interface Props {
   attemptId: string;
   configured: boolean;
   canGenerate: boolean;
+  /** Start writing the review straight away (the student chose "Yes, guide me"). */
+  autoStart?: boolean;
   initial: { review: TestReview; createdAt: string } | null;
 }
 
@@ -18,7 +20,7 @@ const H3 = ({ children, tone }: { children: ReactNode; tone?: "good" | "bad" }) 
   </h3>
 );
 
-export function ReviewPanel({ attemptId, configured, canGenerate, initial }: Props) {
+export function ReviewPanel({ attemptId, configured, canGenerate, autoStart, initial }: Props) {
   const [state, setState] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -35,6 +37,14 @@ export function ReviewPanel({ attemptId, configured, canGenerate, initial }: Pro
         setError("Could not reach the server. Check your connection and try again.");
       }
     });
+
+  const started = useRef(false);
+  useEffect(() => {
+    if (!autoStart || started.current || state || !configured || !canGenerate) return;
+    started.current = true;
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   return (
     <section aria-labelledby="review" className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">

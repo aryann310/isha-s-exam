@@ -186,10 +186,11 @@ model AttemptActivity {
   @@index([attemptId, createdAt])
 }
 
-/// "Talk to your advisor" chat after a test. Students can report a wrong answer for an admin to check.
+/// "Talk to your advisor" chat: about one test (attemptId set) or about all of a student's tests (attemptId
+/// null, the chat on the analytics tab). Students can report a wrong answer for an admin to check.
 model CoachMessage {
   id           String    @id @default(cuid())
-  attemptId    String
+  attemptId    String?
   userId       String
   role         String // user | assistant
   content      String
@@ -200,8 +201,8 @@ model CoachMessage {
   reviewedAt   DateTime?
   createdAt    DateTime  @default(now())
 
-  attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempt Attempt? @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([attemptId, createdAt])
   @@index([userId, createdAt])
